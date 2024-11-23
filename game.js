@@ -59,29 +59,40 @@ onKeyPress("space", () => {
 });
 
 function spawnBullet(x, y) {
-  add([
+  const bullet = add([
     rect(4, 12), // Bullet shape
     pos(x, y),
     color(255, 255, 0), // Yellow bullets
     area(),
     move(UP, BULLET_SPEED),
-    cleanup(), // Destroy when off screen
     "bullet",
   ]);
+
+  // Destroy bullet when it goes off screen
+  bullet.onUpdate(() => {
+    if (bullet.pos.y < -50) {
+      destroy(bullet);
+    }
+  });
 }
 
 // Enemy spawning
 function spawnEnemy() {
-  const x = rand(0, width() - 40); // Random position
-  add([
+  const enemy = add([
     rect(40, 40),
-    pos(x, -40), // Start above screen
+    pos(rand(0, width() - 40), -40), // Random x position, start above screen
     area(),
     color(255, 0, 0), // Red enemies
     move(DOWN, ENEMY_SPEED),
-    cleanup(),
     "enemy",
   ]);
+
+  // Destroy enemy when it goes off screen
+  enemy.onUpdate(() => {
+    if (enemy.pos.y > height() + 50) {
+      destroy(enemy);
+    }
+  });
 
   // Schedule next spawn
   wait(rand(0.5, 2), spawnEnemy);
@@ -99,13 +110,17 @@ onCollide("bullet", "enemy", (bullet, enemy) => {
   
   // Add explosion effect
   for (let i = 0; i < 10; i++) {
-    add([
+    const particle = add([
       rect(4, 4),
       pos(enemy.pos),
       color(255, 255, 0),
-      move(rand(UP), rand(60, 120)),
-      lifespan(0.5),
+      move(rand() < 0.5 ? UP : DOWN, rand(60, 120)),
     ]);
+    
+    // Destroy particle after 0.5 seconds
+    wait(0.5, () => {
+      destroy(particle);
+    });
   }
 });
 
@@ -120,12 +135,12 @@ onCollide("enemy", "player", (enemy) => {
     anchor("center"),
   ]);
   
-  // Stop the game
+  // Stop spawning enemies
   player.paused = true;
   
   // Restart game on space
   onKeyPress("space", () => {
-    go("game"); // Restart the current scene
+    location.reload(); // Simple way to restart
   });
 });
 
