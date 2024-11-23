@@ -1,10 +1,18 @@
-// Initialize kaboom (keep the same)
+// Initialize kaboom
+kaboom({
+    width: 800,
+    height: 600,
+    background: [0, 0, 30],
+    canvas: document.querySelector("canvas"),
+});
 
 // Game scene
 scene("game", () => {
-    // ... (keep existing initialization code)
-
-    // Modified player object to include more power-up states
+    let gameOver = false;
+    let difficulty = 1;
+    let lives = 3;
+    
+    // Add player
     const player = add([
         rect(50, 50),            
         pos(400, 500),           
@@ -13,156 +21,148 @@ scene("game", () => {
         {
             powerUpTime: 0,
             isInvincible: false,
-            rapidFire: false,
-            autoShoot: false,
-            spreadShot: false,
-            currentPowerUp: null
+            autoShoot: false
         },
         "player"                 
     ]);
 
-    // Enhanced power-up types
-    const powerUpTypes = [
-        { 
-            color: [0, 255, 0],      // Green
-            type: "shield", 
-            duration: 5,
-            description: "Shield" 
-        },
-        { 
-            color: [255, 255, 0],    // Yellow
-            type: "rapidFire", 
-            duration: 8,
-            description: "Rapid Fire" 
-        },
-        { 
-            color: [255, 0, 255],    // Purple
-            type: "autoShoot", 
-            duration: 6,
-            description: "Auto Shoot" 
-        },
-        { 
-            color: [0, 255, 255],    // Cyan
-            type: "spreadShot", 
-            duration: 7,
-            description: "Spread Shot" 
-        }
-    ];
-
-    // Power-up status display
-    const powerUpText = add([
-        text("", { size: 20 }),
-        pos(20, 110),
-        color(255, 255, 255)
-    ]);
-
-    // Auto-shoot timer
-    let autoShootTimer = 0;
-    const AUTO_SHOOT_DELAY = 0.3;
-
-    // Update player status and power-ups
-    player.onUpdate(() => {
+    // Player movement
+    onKeyDown("a", () => {
         if (!gameOver) {
-            // Handle auto-shooting
-            if (player.autoShoot) {
-                autoShootTimer += dt();
-                if (autoShootTimer >= AUTO_SHOOT_DELAY) {
-                    shoot();
-                    autoShootTimer = 0;
-                }
-            }
+            player.move(-200, 0);    
+        }
+    });
 
-            // Update power-up timer and status
-            if (player.powerUpTime > 0) {
-                player.powerUpTime -= dt();
-                powerUpText.text = `${player.currentPowerUp}: ${Math.ceil(player.powerUpTime)}s`;
-                
-                if (player.powerUpTime <= 0) {
-                    resetPowerUps();
-                    powerUpText.text = "";
-                }
-            }
+    onKeyDown("d", () => {
+        if (!gameOver) {
+            player.move(200, 0);     
+        }
+    });
 
-            // Visual effects for invincibility
-            if (player.isInvincible) {
-                player.color = rgb(
-                    rand(0, 255),
-                    rand(0, 255),
-                    rand(0, 255)
-                );
-            } else {
-                player.color = rgb(0, 0, 255);
+    // Keep player in bounds
+    player.onUpdate(() => {
+        if (player.pos.x < 0) player.pos.x = 0;
+        if (player.pos.x > width() - 50) player.pos.x = width() - 50;
+
+        // Handle auto-shoot
+        if (player.autoShoot && !gameOver) {
+            shoot();
+        }
+
+        // Update power-up timer
+        if (player.powerUpTime > 0) {
+            player.powerUpTime -= dt();
+            if (player.powerUpTime <= 0) {
+                player.isInvincible = false;
+                player.autoShoot = false;
             }
         }
     });
 
-    // Shooting function
-    function shoot() {
-        if (player.spreadShot) {
-            // Spread shot: 3 bullets in a spread pattern
-            for (let angle of [-15, 0, 15]) {
-                const speed = 400;
-                const rad = angle * Math.PI / 180;
-                add([
-                    rect(6, 15),
-                    pos(player.pos.x + 22, player.pos.y),
-                    color(255, 255, 0),
-                    move(Vec2.fromAngle(rad - Math.PI/2).scale(speed)),
-                    area(),
-                    "bullet",
-                    { damage: 1 }
-                ]);
-            }
-        } else {
-            // Normal shot
-            add([
-                rect(6, 15),
-                pos(player.pos.x + 22, player.pos.y),
-                color(255, 255, 0),
-                move(UP, 400),
-                area(),
-                "bullet",
-                { damage: 1 }
-            ]);
-        }
+    // Power-up types
+    const powerUpTypes = [
+        { color: [0, 255, 0], type: "shield", duration: 5 },     // Green shield
+        { color: [255, 100, 255], type: "autoShoot", duration: 8 } // Purple auto-shoot
+    ];
+
+    // Spawn power-up
+    function spawnPowerUp() {
+        if (gameOver) return;
+        
+        const type = choose(powerUpTypes);
+        add([
+            rect(30, 30),
+            pos(rand(0, width() - 30), 0),
+            color(type.color[0], type.color[1], type.color[2]),
+            move(DOWN, 50),
+            area(),
+            "powerUp",
+            { powerUpType: type }
+        ]);
     }
 
-    // Modified shooting controls
-    let canShoot = true;
-    onKeyDown("space", () => {
+    // Power-up spawn timing
+    let lastPowerUpTime = 0;
+    const POWER_UP_COOLDOWN = 15;
+    const POWER_UP_CHANCE = 0.02;
+
+    // Shooting function
+    function shoot() {
+        add([
+            rect(6, 15),         
+            pos(player.pos.x + 22, player.pos.y), 
+            color(255, 255, 0),  
+            move(UP, 400),       
+            area(),              
+            "bullet"             
+        ]);
+    }
+
+    // Manual shooting
+    onKeyPress("space", () => {
         if (gameOver) {
             go("game");
             return;
         }
         
-        if (canShoot && !player.autoShoot) {
+        if (!player.autoShoot) {
             shoot();
-            canShoot = false;
-            const cooldown = player.rapidFire ? 0.1 : 0.5;
-            wait(cooldown, () => {
-                canShoot = true;
-            });
         }
     });
 
-    // Reset power-ups function
-    function resetPowerUps() {
-        player.isInvincible = false;
-        player.rapidFire = false;
-        player.autoShoot = false;
-        player.spreadShot = false;
-        player.currentPowerUp = null;
+    // Score display
+    let score = 0;
+    const scoreText = add([
+        text("Score: 0", { size: 24 }),
+        pos(20, 20),
+        { value: 0 }
+    ]);
+
+    const livesText = add([
+        text("Lives: " + lives, { size: 24 }),
+        pos(20, 50)
+    ]);
+
+    const levelText = add([
+        text("Level: 1", { size: 24 }),
+        pos(20, 80)
+    ]);
+
+    // Enemy types
+    const enemyTypes = [
+        { width: 40, height: 40, color: [255, 0, 0], speed: 100, points: 10 },
+        { width: 30, height: 30, color: [255, 165, 0], speed: 200, points: 20 },
+        { width: 60, height: 60, color: [128, 0, 0], speed: 50, points: 30 }
+    ];
+
+    function spawnEnemy() {
+        if (!gameOver) {
+            const typeIndex = Math.floor(rand(0, Math.min(enemyTypes.length, difficulty)));
+            const enemyType = enemyTypes[typeIndex];
+            
+            add([
+                rect(enemyType.width, enemyType.height),
+                pos(rand(0, width() - enemyType.width), 0),
+                color(enemyType.color[0], enemyType.color[1], enemyType.color[2]),          
+                move(DOWN, enemyType.speed * (1 + difficulty * 0.1)),           
+                area(),
+                "enemy",
+                { points: enemyType.points }
+            ]);
+        }
     }
 
-    // Power-up spawn configuration
-    let lastPowerUpTime = 0;
-    const POWER_UP_COOLDOWN = 15;    // Minimum 15 seconds between power-ups
-    const POWER_UP_CHANCE = 0.02;    // 2% chance per second
+    loop(1 / (1 + difficulty * 0.1), spawnEnemy);
 
-    // Spawn power-up with modified timing
+    // Handle power-up spawning
     onUpdate(() => {
         if (!gameOver) {
-            // Update difficulty (keep existing difficulty code)
+            // Update difficulty
+            const newDifficulty = 1 + Math.floor(scoreText.value / 100);
+            if (newDifficulty !== difficulty) {
+                difficulty = newDifficulty;
+                levelText.text = "Level: " + difficulty;
+            }
 
             // Check for power-up spawn
             const timeSinceLastPowerUp = time() - lastPowerUpTime;
@@ -173,38 +173,59 @@ scene("game", () => {
         }
     });
 
-    // Modified power-up collision handling
+    // Collisions
+    onCollide("bullet", "enemy", (bullet, enemy) => {
+        if (!gameOver) {
+            destroy(bullet);
+            destroy(enemy);
+            scoreText.value += enemy.points;
+            scoreText.text = "Score: " + scoreText.value;
+        }
+    });
+
     onCollide("player", "powerUp", (p, powerUp) => {
         destroy(powerUp);
         const type = powerUp.powerUpType;
-        
-        // Reset any active power-ups
-        resetPowerUps();
-        
-        // Apply new power-up
         player.powerUpTime = type.duration;
-        player.currentPowerUp = type.description;
         
-        switch(type.type) {
-            case "shield":
-                player.isInvincible = true;
-                break;
-            case "rapidFire":
-                player.rapidFire = true;
-                break;
-            case "autoShoot":
-                player.autoShoot = true;
-                autoShootTimer = 0;
-                break;
-            case "spreadShot":
-                player.spreadShot = true;
-                break;
+        if (type.type === "shield") {
+            player.isInvincible = true;
+        } else if (type.type === "autoShoot") {
+            player.autoShoot = true;
         }
-        
-        createExplosion(player.pos, rgb(type.color[0], type.color[1], type.color[2]));
     });
 
-    // Keep the rest of your existing game code...
+    onCollide("enemy", "player", (enemy, player) => {
+        if (!gameOver && !player.isInvincible) {
+            destroy(enemy);
+            lives--;
+            livesText.text = "Lives: " + lives;
+
+            if (lives <= 0) {
+                gameOver = true;
+                
+                add([
+                    text("Game Over!", { size: 32 }),
+                    pos(width()/2 - 100, height()/2 - 50)
+                ]);
+                
+                add([
+                    text("Final Score: " + scoreText.value, { size: 32 }),
+                    pos(width()/2 - 100, height()/2)
+                ]);
+
+                add([
+                    text("Level Reached: " + difficulty, { size: 32 }),
+                    pos(width()/2 - 100, height()/2 + 40)
+                ]);
+                
+                add([
+                    text("Press SPACE to restart", { size: 32 }),
+                    pos(width()/2 - 150, height()/2 + 90)
+                ]);
+            }
+        }
+    });
 });
 
 // Start the game
