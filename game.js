@@ -11,25 +11,33 @@ const k = kaboom({
 
 // Game state
 let gameOver = false;
+let canRestart = false;
 let SCORE = 0;
 
 // Game constants
 const PLAYER_SPEED = 300;
 const BULLET_SPEED = 600;
 const ENEMY_SPEED = 100;
+const PLAYER_WIDTH = 40;
+const PLAYER_HEIGHT = 40;
 
 // Scene setup
 scene("game", () => {
   // Reset game state
   gameOver = false;
+  canRestart = false;
   SCORE = 0;
 
   // Player
   const player = add([
-    rect(40, 40),
+    rect(PLAYER_WIDTH, PLAYER_HEIGHT),
     pos(width() / 2, height() - 100),
     area(),
     color(0, 0, 255),
+    {
+      width: PLAYER_WIDTH,
+      height: PLAYER_HEIGHT
+    },
     "player",
   ]);
 
@@ -46,43 +54,70 @@ scene("game", () => {
     },
   ]);
 
-  // Movement controls
-  onKeyDown("a", () => {
-    if (gameOver) return;
-    player.moveBy(-PLAYER_SPEED * dt(), 0);
-  });
+  // Movement controls with smooth acceleration
+  let playerVel = 0;
+  const ACCEL = 1600;
+  const DECEL = 2400;
+  const MAX_SPEED = PLAYER_SPEED;
 
-  onKeyDown("d", () => {
+  onUpdate(() => {
     if (gameOver) return;
-    player.moveBy(PLAYER_SPEED * dt(), 0);
-  });
 
-  // Keep player in bounds
-  player.onUpdate(() => {
+    // Handle movement with acceleration
+    if (isKeyDown("a")) {
+      playerVel = Math.max(playerVel - ACCEL * dt(), -MAX_SPEED);
+    } else if (isKeyDown("d")) {
+      playerVel = Math.min(playerVel + ACCEL * dt(), MAX_SPEED);
+    } else {
+      // Decelerate when no keys are pressed
+      if (playerVel > 0) {
+        playerVel = Math.max(0, playerVel - DECEL * dt());
+      } else if (playerVel < 0) {
+        playerVel = Math.min(0, playerVel + DECEL * dt());
+      }
+    }
+
+    // Apply velocity
+    player.moveBy(playerVel * dt(), 0);
+
+    // Keep player in bounds
     if (player.pos.x < 0) {
       player.pos.x = 0;
+      playerVel = 0;
     }
-    if (player.pos.x > width() - 40) {
-      player.pos.x = width() - 40;
+    if (player.pos.x > width() - player.width) {
+      player.pos.x = width() - player.width;
+      playerVel = 0;
     }
   });
 
   // Shooting
-  onKeyPress("space", () => {
+  let canShoot = true;
+  const SHOOT_COOLDOWN = 0.25; // 250ms between shots
+
+  onKeyDown("space", () => {
     if (gameOver) {
-      go("game"); // Restart game
+      if (canRestart) {
+        go("game");
+      }
       return;
     }
     
-    spawnBullet(player.pos.x + 18, player.pos.y);
+    if (canShoot) {
+      spawnBullet(player.pos.x + player.width / 2 - 2, player.pos.y);
+      canShoot = false;
+      wait(SHOOT_COOLDOWN, () => {
+        canShoot = true;
+      });
+    }
   });
 
   function spawnBullet(x, y) {
     add([
       rect(4, 12),
       pos(x, y),
-      color(255, 255, 0),
       area(),
+      color(255, 255, 0),
       "bullet",
       {
         update() {
@@ -95,28 +130,39 @@ scene("game", () => {
     ]);
   }
 
-  // Enemy spawning using loop
+  // Enemy spawning with different types
   let spawnTime = 0;
+  const SPAWN_TYPES = [
+    { width: 40, height: 40, speed: ENEMY_SPEED, points: 10, color: rgb(255, 0, 0) },
+    { width: 30, height: 30, speed: ENEMY_SPEED * 1.5, points: 20, color: rgb(255, 100, 0) },
+    { width: 50, height: 50, speed: ENEMY_SPEED * 0.7, points: 30, color: rgb(200, 0, 0) },
+  ];
+
   onUpdate(() => {
     if (gameOver) return;
     
     spawnTime += dt();
     if (spawnTime >= randi(1, 3)) {
-      spawnEnemy();
+      const type = choose(SPAWN_TYPES);
+      spawnEnemy(type);
       spawnTime = 0;
     }
   });
 
-  function spawnEnemy() {
+  function spawnEnemy(type) {
     add([
-      rect(40, 40),
-      pos(randi(0, width() - 40), -40),
+      rect(type.width, type.height),
+      pos(randi(0, width() - type.width), -type.height),
       area(),
-      color(255, 0, 0),
+      color(type.color),
+      {
+        speed: type.speed,
+        points: type.points,
+      },
       "enemy",
       {
         update() {
-          this.moveBy(0, ENEMY_SPEED * dt());
+          this.moveBy(0, this.speed * dt());
           if (this.pos.y > height() + 50) {
             destroy(this);
           }
@@ -125,12 +171,12 @@ scene("game", () => {
     ]);
   }
 
-  // Collisions
+  // Collisions with improved particle effects
   onCollide("bullet", "enemy", (bullet, enemy) => {
     destroy(bullet);
     destroy(enemy);
-    SCORE += 10;
-    addExplodingParticles(enemy.pos);
+    SCORE += enemy.points;
+    addExplodingParticles(enemy.pos, enemy.color);
   });
 
   onCollide("enemy", "player", (enemy) => {
@@ -139,21 +185,25 @@ scene("game", () => {
     destroy(enemy);
     gameOver = true;
     addGameOverScreen();
+    addExplodingParticles(player.pos, rgb(0, 0, 255));
   });
 
-  function addExplodingParticles(p) {
-    for (let i = 0; i < 8; i++) {
+  function addExplodingParticles(p, color) {
+    for (let i = 0; i < 12; i++) {
+      const angle = (360 / 12) * i;
+      const speed = rand(50, 150);
       add([
         rect(4, 4),
         pos(p),
-        color(255, 255, 0),
+        color,
         "particle",
         {
-          vel: Vec2.fromAngle(rand(0, 360)).scale(rand(50, 100)),
+          vel: Vec2.fromAngle(angle).scale(speed),
           update() {
             this.moveBy(this.vel.scale(dt()));
+            this.vel = this.vel.scale(0.95); // Slow down over time
           },
-          lifespan: 0.5,
+          lifespan: 0.8,
           timer: 0,
           update() {
             this.timer += dt();
@@ -174,13 +224,17 @@ scene("game", () => {
       origin("center"),
       fixed(),
     ]);
+    
+    wait(1, () => {
+      canRestart = true;
+    });
   }
 
   // Instructions
   add([
-    text("A/D to move, SPACE to shoot", 
-      { size: 16 }),
+    text("A/D to move, SPACE to shoot", { size: 16 }),
     pos(10, height() - 30),
+    fixed(),
     color(255, 255, 255),
   ]);
 });
