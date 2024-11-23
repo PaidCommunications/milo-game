@@ -8,6 +8,8 @@ kaboom({
 
 // Game scene
 scene("game", () => {
+    let gameOver = false;
+    
     // Add player
     const player = add([
         rect(50, 50),            
@@ -19,11 +21,15 @@ scene("game", () => {
 
     // Player movement
     onKeyDown("a", () => {
-        player.move(-200, 0);    
+        if (!gameOver) {
+            player.move(-200, 0);    
+        }
     });
 
     onKeyDown("d", () => {
-        player.move(200, 0);     
+        if (!gameOver) {
+            player.move(200, 0);     
+        }
     });
 
     // Keep player in bounds
@@ -34,6 +40,12 @@ scene("game", () => {
 
     // Shooting
     onKeyPress("space", () => {
+        if (gameOver) {
+            // Restart game
+            go("game");
+            return;
+        }
+        
         add([
             rect(6, 15),         
             pos(player.pos.x + 22, player.pos.y), 
@@ -53,48 +65,57 @@ scene("game", () => {
     ]);
 
     // Add enemy every second
-    loop(1, () => {
-        add([
-            rect(40, 40),
-            pos(rand(0, width() - 40), 0),
-            color(255, 0, 0),          
-            move(DOWN, 100),           
-            area(),
-            "enemy"
-        ]);
-    });
+    const spawnEnemy = () => {
+        if (!gameOver) {
+            add([
+                rect(40, 40),
+                pos(rand(0, width() - 40), 0),
+                color(255, 0, 0),          
+                move(DOWN, 100),           
+                area(),
+                "enemy"
+            ]);
+        }
+    };
+
+    loop(1, spawnEnemy);
 
     // Bullet hits enemy
     onCollide("bullet", "enemy", (bullet, enemy) => {
-        destroy(bullet);
-        destroy(enemy);
-        score += 10;
-        scoreText.text = "Score: " + score;
+        if (!gameOver) {
+            destroy(bullet);
+            destroy(enemy);
+            score += 10;
+            scoreText.text = "Score: " + score;
+        }
     });
 
     // Enemy hits player
     onCollide("enemy", "player", (enemy, player) => {
-        destroy(enemy);
-        destroy(player);
-        add([
-            text("Game Over!", { size: 32 }),
-            pos(300, 250),
-            color(255, 255, 255),
-        ]);
-        add([
-            text("Score: " + score, { size: 32 }),
-            pos(300, 300),
-            color(255, 255, 255),
-        ]);
-        add([
-            text("Press SPACE to restart", { size: 32 }),
-            pos(300, 350),
-            color(255, 255, 255),
-        ]);
-        
-        onKeyPress("space", () => {
-            go("game");
-        });
+        if (!gameOver) {
+            gameOver = true;
+            
+            // Game Over Text
+            add([
+                text("Game Over!", { size: 32 }),
+                pos(width()/2 - 100, height()/2 - 50),
+                color(255, 255, 255),
+            ]);
+            
+            // Final Score
+            add([
+                text("Final Score: " + score, { size: 32 }),
+                pos(width()/2 - 100, height()/2),
+                color(255, 255, 255),
+            ]);
+            
+            // Restart Instructions
+            add([
+                text("Press SPACE to restart", { size: 32 }),
+                pos(width()/2 - 150, height()/2 + 50),
+                color(255, 255, 255),
+            ]);
+        }
     });
 });
 
