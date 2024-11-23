@@ -56,7 +56,7 @@ scene("game", () => {
     loop(1, () => {
         add([
             rect(40, 40),
-            pos(rand(0, width() - 40), 0),  // Prevent spawning partially off-screen
+            pos(rand(0, width() - 40), 0),
             color(255, 0, 0),          
             move(DOWN, 100),           
             area(),
@@ -74,45 +74,27 @@ scene("game", () => {
 
     // Enemy hits player
     onCollide("enemy", "player", (enemy, player) => {
-        go("gameOver", score);
-    });
-});
-
-// Game over scene
-scene("gameOver", (score) => {
-    // Calculate center position
-    const centerX = width() / 2;
-    const centerY = height() / 2;
-    
-    // Game Over text
-    add([
-        text("Game Over!", { size: 32 }),
-        pos(centerX, centerY - 50),
-        color(255, 255, 255),
-    ]).text = "Game Over!";
-    
-    // Score text
-    add([
-        text("Score: " + score, { size: 32 }),
-        pos(centerX, centerY),
-        color(255, 255, 255),
-    ]).text = "Score: " + score;
-    
-    // Restart instruction
-    add([
-        text("Press SPACE to restart", { size: 24 }),
-        pos(centerX, centerY + 50),
-        color(255, 255, 255),
-    ]).text = "Press SPACE to restart";
-
-    // Center align all text
-    every(text(), (t) => {
-        t.pos.x -= t.width / 2;
-    });
-
-    // Restart handler
-    onKeyPress("space", () => {
-        go("game");
+        destroy(enemy);
+        destroy(player);
+        add([
+            text("Game Over!", { size: 32 }),
+            pos(300, 250),
+            color(255, 255, 255),
+        ]);
+        add([
+            text("Score: " + score, { size: 32 }),
+            pos(300, 300),
+            color(255, 255, 255),
+        ]);
+        add([
+            text("Press SPACE to restart", { size: 32 }),
+            pos(300, 350),
+            color(255, 255, 255),
+        ]);
+        
+        onKeyPress("space", () => {
+            go("game");
+        });
     });
 });
 
