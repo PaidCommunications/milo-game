@@ -13,16 +13,20 @@ loadBean();
 
 // Game constants
 const PLAYER_SPEED = 200;
-const JUMP_FORCE = 550;
+const JUMP_FORCE = -400;  // Changed to negative for upward jump
 
 // Player component
 const player = add([
-  sprite("bean"),  // Using built-in bean sprite for now
-  pos(100, 500),   // Starting position
-  area(),          // For collisions
-  body(),          // Add physics
-  scale(0.7),      // Make the sprite smaller
-  color(0, 0, 255) // Blue tint
+  sprite("bean"),
+  pos(100, 500),
+  area(),
+  body(),
+  scale(0.7),
+  color(0, 0, 255),
+  {
+    // Add custom jumping property
+    isJumping: false
+  }
 ]);
 
 // Add wooden-looking platforms
@@ -51,14 +55,14 @@ const makePlatform = (x, y, width) => {
 
 // Create platforms
 const platformPositions = [
-  [100, 400, 200],  // [x, y, width]
+  [100, 400, 200],
   [400, 300, 200],
   [200, 200, 200],
 ];
 
 platformPositions.forEach(([x, y, w]) => makePlatform(x, y, w));
 
-// Controls - Added multiple options for jumping
+// Movement controls
 onKeyDown("a", () => {
   player.move(-PLAYER_SPEED, 0);
 });
@@ -67,19 +71,23 @@ onKeyDown("d", () => {
   player.move(PLAYER_SPEED, 0);
 });
 
-// Multiple jump controls
-onKeyPress(["w", "space", "up"], () => {
-  if (player.isGrounded()) {
+// New jump function
+function jumpIfPossible() {
+  if (player.isGrounded() && !player.isJumping) {
     player.jump(JUMP_FORCE);
+    player.isJumping = true;
   }
+}
+
+// Reset jump when landing
+player.onGround(() => {
+  player.isJumping = false;
 });
 
-// Add touch controls for mobile
-onClick(() => {
-  if (player.isGrounded()) {
-    player.jump(JUMP_FORCE);
-  }
-});
+// Multiple jump controls
+onKeyPress("w", jumpIfPossible);
+onKeyPress("up", jumpIfPossible);
+onKeyPress("space", jumpIfPossible);
 
 // Add ground
 const GROUND_HEIGHT = 50;
@@ -92,7 +100,7 @@ add([
   "ground"
 ]);
 
-// Keep player in bounds
+// Keep player in bounds and handle falling
 player.onUpdate(() => {
   // Left boundary
   if (player.pos.x < 0) {
@@ -105,21 +113,14 @@ player.onUpdate(() => {
   // Bottom boundary (fall detection)
   if (player.pos.y > height()) {
     player.pos = vec2(100, height() - 100);
+    player.isJumping = false;
   }
 });
 
-// Updated instructions to show all controls
+// Instructions
 add([
-  text("Use W/SPACE/UP to jump, A/D to move", { size: 16 }),
+  text("Use W/SPACE/UP ARROW to jump, A/D to move", { size: 16 }),
   pos(10, 10),
-  fixed(),
-  color(0, 0, 0)
-]);
-
-// Add mobile instructions
-add([
-  text("Tap screen to jump on mobile", { size: 16 }),
-  pos(10, 30),
   fixed(),
   color(0, 0, 0)
 ]);
