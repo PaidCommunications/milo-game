@@ -10,31 +10,37 @@ kaboom({
 scene("game", () => {
     // Add player
     const player = add([
-        rect(50, 50),            // Simple blue square for player
-        pos(400, 500),           // Starting position
-        color(0, 0, 255),        // Blue color
-        area(),                  // For collisions
-        "player"                 // Tag for identification
+        rect(50, 50),            
+        pos(400, 500),           
+        color(0, 0, 255),        
+        area(),                  
+        "player"                 
     ]);
 
     // Player movement
     onKeyDown("a", () => {
-        player.move(-200, 0);    // Move left
+        player.move(-200, 0);    
     });
 
     onKeyDown("d", () => {
-        player.move(200, 0);     // Move right
+        player.move(200, 0);     
+    });
+
+    // Keep player in bounds
+    player.onUpdate(() => {
+        if (player.pos.x < 0) player.pos.x = 0;
+        if (player.pos.x > width() - 50) player.pos.x = width() - 50;
     });
 
     // Shooting
     onKeyPress("space", () => {
         add([
-            rect(6, 15),         // Bullet shape
-            pos(player.pos.x + 22, player.pos.y), // Start at player position
-            color(255, 255, 0),  // Yellow bullet
-            move(UP, 400),       // Move upward
-            area(),              // For collisions
-            "bullet"             // Tag for identification
+            rect(6, 15),         
+            pos(player.pos.x + 22, player.pos.y), 
+            color(255, 255, 0),  
+            move(UP, 400),       
+            area(),              
+            "bullet"             
         ]);
     });
 
@@ -50,9 +56,9 @@ scene("game", () => {
     loop(1, () => {
         add([
             rect(40, 40),
-            pos(rand(0, width()), 0),  // Random position at top
-            color(255, 0, 0),          // Red color
-            move(DOWN, 100),           // Move down
+            pos(rand(0, width() - 40), 0),  // Prevent spawning partially off-screen
+            color(255, 0, 0),          
+            move(DOWN, 100),           
             area(),
             "enemy"
         ]);
@@ -68,20 +74,43 @@ scene("game", () => {
 
     // Enemy hits player
     onCollide("enemy", "player", (enemy, player) => {
-        // Game over
         go("gameOver", score);
     });
 });
 
 // Game over scene
 scene("gameOver", (score) => {
+    // Calculate center position
+    const centerX = width() / 2;
+    const centerY = height() / 2;
+    
+    // Game Over text
     add([
-        text(`Game Over!\nScore: ${score}\n\nPress Space to restart`, { size: 32 }),
-        pos(width()/2, height()/2),
-        origin("center"),
-        color(255, 255, 255)
-    ]);
+        text("Game Over!", { size: 32 }),
+        pos(centerX, centerY - 50),
+        color(255, 255, 255),
+    ]).text = "Game Over!";
+    
+    // Score text
+    add([
+        text("Score: " + score, { size: 32 }),
+        pos(centerX, centerY),
+        color(255, 255, 255),
+    ]).text = "Score: " + score;
+    
+    // Restart instruction
+    add([
+        text("Press SPACE to restart", { size: 24 }),
+        pos(centerX, centerY + 50),
+        color(255, 255, 255),
+    ]).text = "Press SPACE to restart";
 
+    // Center align all text
+    every(text(), (t) => {
+        t.pos.x -= t.width / 2;
+    });
+
+    // Restart handler
     onKeyPress("space", () => {
         go("game");
     });
