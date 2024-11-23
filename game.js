@@ -58,7 +58,7 @@ const platformPositions = [
 
 platformPositions.forEach(([x, y, w]) => makePlatform(x, y, w));
 
-// Controls
+// Controls - Added multiple options for jumping
 onKeyDown("a", () => {
   player.move(-PLAYER_SPEED, 0);
 });
@@ -67,7 +67,15 @@ onKeyDown("d", () => {
   player.move(PLAYER_SPEED, 0);
 });
 
-onKeyPress("w", () => {
+// Multiple jump controls
+onKeyPress(["w", "space", "up"], () => {
+  if (player.isGrounded()) {
+    player.jump(JUMP_FORCE);
+  }
+});
+
+// Add touch controls for mobile
+onClick(() => {
   if (player.isGrounded()) {
     player.jump(JUMP_FORCE);
   }
@@ -100,10 +108,18 @@ player.onUpdate(() => {
   }
 });
 
-// Instructions
+// Updated instructions to show all controls
 add([
-  text("Use W to jump, A/D to move", { size: 16 }),
+  text("Use W/SPACE/UP to jump, A/D to move", { size: 16 }),
   pos(10, 10),
+  fixed(),
+  color(0, 0, 0)
+]);
+
+// Add mobile instructions
+add([
+  text("Tap screen to jump on mobile", { size: 16 }),
+  pos(10, 30),
   fixed(),
   color(0, 0, 0)
 ]);
