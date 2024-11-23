@@ -9,6 +9,7 @@ kaboom({
 // Game scene
 scene("game", () => {
     let gameOver = false;
+    let difficulty = 1;
     
     // Add player
     const player = add([
@@ -64,28 +65,58 @@ scene("game", () => {
         color(255, 255, 255),
     ]);
 
-    // Add enemy every second
+    // Level display
+    const levelText = add([
+        text("Level: 1", { size: 24 }),
+        pos(20, 50),
+        color(255, 255, 255),
+    ]);
+
+    // Different enemy types
+    const enemyTypes = [
+        { width: 40, height: 40, color: [255, 0, 0], speed: 100, points: 10 },    // Normal enemy
+        { width: 30, height: 30, color: [255, 165, 0], speed: 200, points: 20 },  // Fast enemy
+        { width: 60, height: 60, color: [128, 0, 0], speed: 50, points: 30 },     // Big enemy
+    ];
+
+    // Add enemy with increasing difficulty
     const spawnEnemy = () => {
         if (!gameOver) {
+            // Randomly select enemy type, with harder enemies more common at higher levels
+            const typeIndex = Math.floor(rand(0, Math.min(enemyTypes.length, difficulty)));
+            const enemyType = enemyTypes[typeIndex];
+            
+            // Create enemy with selected properties
             add([
-                rect(40, 40),
-                pos(rand(0, width() - 40), 0),
-                color(255, 0, 0),          
-                move(DOWN, 100),           
+                rect(enemyType.width, enemyType.height),
+                pos(rand(0, width() - enemyType.width), 0),
+                color(enemyType.color[0], enemyType.color[1], enemyType.color[2]),          
+                move(DOWN, enemyType.speed * (1 + difficulty * 0.1)),           
                 area(),
-                "enemy"
+                "enemy",
+                { points: enemyType.points }
             ]);
         }
     };
 
-    loop(1, spawnEnemy);
+    // Spawn enemies faster as difficulty increases
+    loop(1 / (1 + difficulty * 0.1), spawnEnemy);
+
+    // Increase difficulty every 100 points
+    onUpdate(() => {
+        const newDifficulty = 1 + Math.floor(score / 100);
+        if (newDifficulty !== difficulty) {
+            difficulty = newDifficulty;
+            levelText.text = "Level: " + difficulty;
+        }
+    });
 
     // Bullet hits enemy
     onCollide("bullet", "enemy", (bullet, enemy) => {
         if (!gameOver) {
             destroy(bullet);
             destroy(enemy);
-            score += 10;
+            score += enemy.points;
             scoreText.text = "Score: " + score;
         }
     });
@@ -108,11 +139,18 @@ scene("game", () => {
                 pos(width()/2 - 100, height()/2),
                 color(255, 255, 255),
             ]);
+
+            // Level Reached
+            add([
+                text("Level Reached: " + difficulty, { size: 32 }),
+                pos(width()/2 - 100, height()/2 + 40),
+                color(255, 255, 255),
+            ]);
             
             // Restart Instructions
             add([
                 text("Press SPACE to restart", { size: 32 }),
-                pos(width()/2 - 150, height()/2 + 50),
+                pos(width()/2 - 150, height()/2 + 90),
                 color(255, 255, 255),
             ]);
         }
