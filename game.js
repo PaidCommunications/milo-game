@@ -240,6 +240,38 @@ scene("game", () => {
         }
     }
 
+    // Power-Up Collision Handling
+    onCollide("player", "powerUp", (player, powerUp) => {
+        const type = powerUp.powerUpType;
+
+        // Destroy the power-up after collision
+        destroy(powerUp);
+
+        // Reset active power-ups
+        player.forcefield = false;
+        player.rapidFire = false;
+        player.spreadShot = false;
+        player.hasBomb = false;
+
+        // Apply power-up effects
+        if (type === "forcefield") {
+            player.forcefield = true;
+            player.powerUpTime = 10;
+            player.use(sprite("forcefield", { width: 50, height: 50 }));
+        } else if (type === "rapidFire") {
+            player.rapidFire = true;
+            wait(10, () => (player.rapidFire = false));
+        } else if (type === "extraLife") {
+            lives++;
+            livesText.text = "Lives: " + lives;
+        } else if (type === "spreadShot") {
+            player.spreadShot = true;
+            wait(10, () => (player.spreadShot = false));
+        } else if (type === "bomb") {
+            player.hasBomb = true;
+        }
+    });
+
     // Spawn an enemy
     function spawnEnemy() {
         const enemy = choose(enemyTypes);
@@ -342,7 +374,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V2\n\n" +
+            "MiloInvasion V1\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot\n" +
