@@ -23,6 +23,7 @@ scene("game", () => {
     let difficulty = 1;
     let score = 0;
     let spawnTime = 0;
+    let lastShotTime = 0;
     const PLAYER_SPEED = 400;
     let lives = 3;
 
@@ -65,6 +66,12 @@ scene("game", () => {
     player.onUpdate(() => {
         player.pos.x = clamp(player.pos.x, 0, width() - player.width);
         player.pos.y = clamp(player.pos.y, 0, height() - player.height);
+
+        // Rapid fire shooting
+        if (player.rapidFire && time() - lastShotTime > 0.1) {
+            shoot();
+            lastShotTime = time();
+        }
     });
 
     // Display score, lives, and level
@@ -105,7 +112,8 @@ scene("game", () => {
                 {
                     update() {
                         if (this.pos.y < height() / 2) {
-                            every("enemy", (enemy) => {
+                            const enemies = get("enemy");
+                            enemies.forEach((enemy) => {
                                 displayPoints(enemy.pos, enemy.points);
                                 destroy(enemy);
                             });
@@ -138,7 +146,11 @@ scene("game", () => {
             ]);
         }
     }
-    onKeyPress("space", shoot);
+    onKeyPress("space", () => {
+        if (!player.rapidFire) {
+            shoot();
+        }
+    });
 
     // Enemy spawning
     const enemyTypes = [
@@ -283,13 +295,13 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1.1\n\n" +
+            "MiloInvasion V1.2\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys to move\n" +
-                "- Spacebar to shoot\n" +
+                "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
                 "Power-Ups:\n" +
                 "Green: Forcefield\n" +
-                "Light Purple: Rapid Fire\n" +
+                "Light Purple: Rapid Fire (hold SPACE)\n" +
                 "White: Extra Life\n" +
                 "Blue: Spread Shot\n" +
                 "Dark Purple: Bomb\n\n" +
