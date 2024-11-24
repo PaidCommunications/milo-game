@@ -104,7 +104,16 @@ scene("game", () => {
             
             // Gold color when invincible
             if (player.isInvincible) {
-                player.use(color(255, 215, 0));
+                if (player.powerUpTime <= 2) {
+                    // Blink rapidly in last 2 seconds
+                    if (Math.floor(time() * 10) % 2 === 0) {
+                        player.use(color(255, 215, 0)); // Gold
+                    } else {
+                        player.use(color(0, 0, 255));  // Blue
+                    }
+                } else {
+                    player.use(color(255, 215, 0));    // Solid gold
+                }
             }
             
             if (player.powerUpTime <= 0) {
