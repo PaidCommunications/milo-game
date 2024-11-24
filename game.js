@@ -34,7 +34,7 @@ scene("game", () => {
 
     // Player setup
     const player = add([
-        sprite("player"),
+        sprite("player", { width: 50, height: 50 }), // Force the player size to 50x50 pixels
         pos(width() / 2, height() - 100),
         area(),
         "player"
