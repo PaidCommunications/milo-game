@@ -14,7 +14,7 @@ scene("game", () => {
     let spawnTime = 0;
     const MIN_SPAWN_RATE = 0.3;
     
-    // Add player with face
+    // Player base
     const player = add([
         rect(50, 50),            
         pos(400, 500),           
@@ -26,32 +26,44 @@ scene("game", () => {
             autoShoot: false,
             spreadShot: false
         },
-        "player",
+        "player"                 
+    ]);
+
+    // Face elements
+    const eyes = add([
+        "eyes",
+        pos(0, 0),
         {
-            draw: () => {
-                // Draw white eyes
+            draw() {
                 drawRect({
+                    width: 10,
+                    height: 10,
                     pos: vec2(player.pos.x + 10, player.pos.y + 15),
-                    width: 8,
-                    height: 8,
-                    color: rgb(255, 255, 255)
+                    color: rgb(255, 255, 255),
                 });
                 drawRect({
+                    width: 10,
+                    height: 10,
                     pos: vec2(player.pos.x + 32, player.pos.y + 15),
-                    width: 8,
-                    height: 8,
-                    color: rgb(255, 255, 255)
+                    color: rgb(255, 255, 255),
                 });
-                
-                // Draw white smile
+            },
+        },
+    ]);
+
+    const mouth = add([
+        "mouth",
+        pos(0, 0),
+        {
+            draw() {
                 drawRect({
+                    width: 25,
+                    height: 6,
                     pos: vec2(player.pos.x + 15, player.pos.y + 35),
-                    width: 20,
-                    height: 5,
-                    color: rgb(255, 255, 255)
+                    color: rgb(255, 255, 255),
                 });
-            }
-        }
+            },
+        },
     ]);
 
     // Player movement
@@ -333,6 +345,8 @@ scene("game", () => {
 
             if (lives <= 0) {
                 gameOver = true;
+                destroy(eyes);
+                destroy(mouth);
                 
                 add([
                     text("Game Over!", { size: 32 }),
