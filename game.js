@@ -45,6 +45,12 @@ scene("game", () => {
         "player"
     ]);
 
+    // Restrict player to the game window
+    player.onUpdate(() => {
+        player.pos.x = clamp(player.pos.x, 0, width() - player.width);
+        player.pos.y = clamp(player.pos.y, 0, height() - player.height);
+    });
+
     // Display score, lives, and level
     const scoreText = add([
         text("Score: 0", { size: 24 }),
@@ -71,12 +77,14 @@ scene("game", () => {
     // Shooting
     function shoot() {
         play("shoot");
+        const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
         if (player.hasBomb) {
             add([
                 rect(15, 15),
-                pos(player.pos.x, player.pos.y - 10),
+                pos(bulletPos),
                 move(UP, 300),
                 color(128, 0, 128),
+                area(),
                 "bomb",
                 {
                     update() {
@@ -96,16 +104,17 @@ scene("game", () => {
             [-15, 0, 15].forEach(offset => {
                 add([
                     rect(6, 15),
-                    pos(player.pos.x + offset, player.pos.y - 10),
+                    pos(bulletPos.x + offset, bulletPos.y),
                     move(UP, 300),
                     color(255, 255, 255),
+                    area(),
                     "bullet"
                 ]);
             });
         } else {
             add([
                 rect(6, 15),
-                pos(player.pos.x, player.pos.y - 10),
+                pos(bulletPos),
                 move(UP, 400),
                 color(255, 255, 0),
                 area(),
