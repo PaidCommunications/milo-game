@@ -89,25 +89,6 @@ scene("game", () => {
             player.pos.y = clamp(player.pos.y, 0, height() - player.height);
         }
 
-        // Handle invincibility blinking
-        if (player.forcefield) {
-            player.powerUpTime -= dt();
-
-            if (player.powerUpTime <= 2) {
-                const isEven = Math.floor(time() * 10) % 2 === 0;
-                if (isEven) {
-                    player.use(sprite("invincible", { width: 50, height: 50 })); // Blink to invincible sprite
-                } else {
-                    player.use(sprite("player", { width: 50, height: 50 })); // Back to normal sprite
-                }
-            }
-
-            if (player.powerUpTime <= 0) {
-                player.forcefield = false;
-                player.use(sprite("player", { width: 50, height: 50 })); // Reset to normal sprite
-            }
-        }
-
         // Rapid fire shooting
         if (player.rapidFire && !player.isInvisible && time() - lastShotTime > 0.1) {
             shoot();
@@ -115,69 +96,20 @@ scene("game", () => {
         }
     });
 
-    // Player movement controls
-    onKeyDown("left", () => player.move(-PLAYER_SPEED, 0));
-    onKeyDown("right", () => player.move(PLAYER_SPEED, 0));
-    onKeyDown("up", () => player.move(0, -PLAYER_SPEED));
-    onKeyDown("down", () => player.move(0, PLAYER_SPEED));
-
-    onKeyDown("a", () => player.move(-PLAYER_SPEED, 0));
-    onKeyDown("d", () => player.move(PLAYER_SPEED, 0));
-    onKeyDown("w", () => player.move(0, -PLAYER_SPEED));
-    onKeyDown("s", () => player.move(0, PLAYER_SPEED));
-
     // Shooting logic
     function shoot() {
         if (player.isInvisible) return; // Prevent shooting while invisible
         play("shoot");
         const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
 
-        if (player.hasBomb) {
-            // Launch a single bomb
-            add([
-                rect(15, 15),
-                pos(bulletPos),
-                move(UP, 300),
-                color(128, 0, 128),
-                area(),
-                "bomb",
-                {
-                    update() {
-                        if (this.pos.y < height() / 2) {
-                            get("enemy").forEach((enemy) => {
-                                if ("pos" in enemy && enemy.pos) {
-                                    displayPoints(enemy.pos, enemy.points || 0);
-                                    destroy(enemy);
-                                }
-                            });
-                            createExplosion(this.pos);
-                            destroy(this);
-                        }
-                    }
-                }
-            ]);
-            player.hasBomb = false;
-        } else if (player.spreadShot) {
-            [-15, 0, 15].forEach(offset => {
-                add([
-                    rect(6, 15),
-                    pos(bulletPos.x + offset, bulletPos.y),
-                    move(UP, 300),
-                    color(255, 255, 255),
-                    area(),
-                    "bullet"
-                ]);
-            });
-        } else {
-            add([
-                rect(6, 15),
-                pos(bulletPos),
-                move(UP, 400),
-                color(255, 255, 0),
-                area(),
-                "bullet"
-            ]);
-        }
+        add([
+            rect(6, 15),
+            pos(bulletPos),
+            move(UP, 400),
+            color(255, 255, 0),
+            area(), // Required for collision
+            "bullet"
+        ]);
     }
 
     // Spacebar shooting
@@ -185,6 +117,20 @@ scene("game", () => {
         if (!player.isInvisible) {
             shoot();
         }
+    });
+
+    // Handle collision between bullets and enemies
+    onCollide("bullet", "enemy", (bullet, enemy) => {
+        destroy(bullet);
+
+        if ("pos" in enemy && enemy.points) {
+            displayPoints(enemy.pos, enemy.points);
+        }
+
+        destroy(enemy);
+
+        score += enemy.points || 0;
+        scoreText.text = "Score: " + score;
     });
 
     // Handle collision with enemies
@@ -218,35 +164,6 @@ scene("game", () => {
         }
     });
 
-    // Power-Up Spawning
-    function spawnPowerUps() {
-        const now = time();
-
-        for (const type in powerUpTimers) {
-            if (now - powerUpTimers[type] >= powerUpIntervals[type]) {
-                powerUpTimers[type] = now;
-
-                const colorMap = {
-                    forcefield: [0, 255, 0],
-                    rapidFire: [255, 100, 255],
-                    extraLife: [255, 255, 255],
-                    spreadShot: [0, 0, 255],
-                    bomb: [128, 0, 128]
-                };
-
-                add([
-                    rect(30, 30),
-                    pos(rand(0, width() - 30), 0),
-                    color(colorMap[type][0], colorMap[type][1], colorMap[type][2]),
-                    move(DOWN, 50),
-                    area(),
-                    "powerUp",
-                    { powerUpType: type }
-                ]);
-            }
-        }
-    }
-
     // Spawn enemies
     const enemyTypes = [
         { sprite: "enemy1", width: 100, height: 100, speed: 100, points: 10 },
@@ -264,20 +181,6 @@ scene("game", () => {
             "enemy",
             { points: enemy.points }
         ]);
-    }
-
-    // Explosion effect
-    function createExplosion(pos) {
-        play("explosion");
-        for (let i = 0; i < 32; i++) {
-            add([
-                rect(8, 8),
-                pos(pos),
-                move(rand(0, 360), rand(100, 200)),
-                lifespan(0.5),
-                color(255, 200, 0)
-            ]);
-        }
     }
 
     // Display points on enemy death
@@ -298,8 +201,6 @@ scene("game", () => {
                 spawnEnemy();
                 spawnTime = 0;
             }
-
-            spawnPowerUps();
         }
     });
 });
@@ -308,13 +209,13 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1.1\n\n" +
+            "MiloInvasion V1.2\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
-                "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
+                "- Spacebar to shoot\n" +
                 "Power-Ups:\n" +
                 "Green: Forcefield\n" +
-                "Light Purple: Rapid Fire\n" +
+                "Light Purple: Rapid Fire (automatic)\n" +
                 "White: Extra Life\n" +
                 "Blue: Spread Shot\n" +
                 "Dark Purple: Bomb\n\n" +
