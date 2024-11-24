@@ -23,13 +23,12 @@ scene("game", () => {
     let spawnTime = 0;
     const MIN_SPAWN_RATE = 0.3;
     const PLAYER_SIZE = 50;
-    const PLAYER_MARGIN_BOTTOM = 50;
-    const PLAYER_SPEED = 400; // Double original speed
+    const PLAYER_SPEED = 400;
 
-    // Player base at bottom of screen
+    // Player base - starting position
     const player = add([
         rect(PLAYER_SIZE, PLAYER_SIZE),            
-        pos(width() / 2, height() - PLAYER_MARGIN_BOTTOM - PLAYER_SIZE),
+        pos(width() / 2, height() / 2),
         color(0, 0, 255),        
         area(),
         {
@@ -79,7 +78,32 @@ scene("game", () => {
         },
     ]);
 
-    // Player movement
+    // Arrow key movement
+    onKeyDown("left", () => {
+        if (!gameOver) {
+            player.move(-PLAYER_SPEED, 0);    
+        }
+    });
+
+    onKeyDown("right", () => {
+        if (!gameOver) {
+            player.move(PLAYER_SPEED, 0);    
+        }
+    });
+
+    onKeyDown("up", () => {
+        if (!gameOver) {
+            player.move(0, -PLAYER_SPEED);    
+        }
+    });
+
+    onKeyDown("down", () => {
+        if (!gameOver) {
+            player.move(0, PLAYER_SPEED);    
+        }
+    });
+
+    // WASD as alternate controls
     onKeyDown("a", () => {
         if (!gameOver) {
             player.move(-PLAYER_SPEED, 0);    
@@ -92,11 +116,25 @@ scene("game", () => {
         }
     });
 
+    onKeyDown("w", () => {
+        if (!gameOver) {
+            player.move(0, -PLAYER_SPEED);    
+        }
+    });
+
+    onKeyDown("s", () => {
+        if (!gameOver) {
+            player.move(0, PLAYER_SPEED);    
+        }
+    });
+
     // Keep player in bounds
     player.onUpdate(() => {
+        // Screen boundaries
         if (player.pos.x < 0) player.pos.x = 0;
         if (player.pos.x > width() - PLAYER_SIZE) player.pos.x = width() - PLAYER_SIZE;
-        player.pos.y = height() - PLAYER_MARGIN_BOTTOM - PLAYER_SIZE; // Lock vertical position
+        if (player.pos.y < 0) player.pos.y = 0;
+        if (player.pos.y > height() - PLAYER_SIZE) player.pos.y = height() - PLAYER_SIZE;
 
         // Handle auto-shoot
         if (player.autoShoot && !gameOver) {
@@ -270,7 +308,7 @@ scene("game", () => {
         { width: 60, height: 60, color: [128, 0, 0], speed: 50, points: 30 }
     ];
 
-    // Enemy spawning across full width
+    // Enemy spawning
     function spawnEnemy() {
         if (gameOver) return;
         
