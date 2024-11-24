@@ -29,6 +29,23 @@ scene("game", () => {
     const PLAYER_SPEED = 400;
     let lives = 3;
 
+    // Display score, lives, and level
+    const scoreText = add([
+        text("Score: 0", { size: 24 }),
+        pos(20, 20),
+        { value: 0 }
+    ]);
+
+    const livesText = add([
+        text("Lives: 3", { size: 24 }),
+        pos(20, 50)
+    ]);
+
+    const levelText = add([
+        text("Level: 1", { size: 24 }),
+        pos(20, 80)
+    ]);
+
     // Timers for power-up spawns
     const powerUpTimers = {
         forcefield: time(),
@@ -300,7 +317,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1.8\n\n" +
+            "MiloInvasion V1.9\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
