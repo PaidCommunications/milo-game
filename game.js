@@ -10,7 +10,7 @@ kaboom({
 
 // Load assets
 loadSprite("player", "assets/player.png");
-loadSprite("forcefield", "assets/forcefield.png"); // Forcefield sprite
+loadSprite("forcefield", "assets/forcefield.png");
 loadSprite("enemy1", "assets/enemy1.png");
 loadSprite("enemy2", "assets/enemy2.png");
 loadSprite("enemy3", "assets/enemy3.png");
@@ -38,11 +38,11 @@ scene("game", () => {
     };
 
     const powerUpIntervals = {
-        forcefield: 30, // Every 30 seconds
-        rapidFire: 20,  // Every 20 seconds
-        extraLife: 60,  // Every 60 seconds
-        spreadShot: 15, // Every 15 seconds
-        bomb: 45,       // Every 45 seconds
+        forcefield: 30,
+        rapidFire: 20,
+        extraLife: 60,
+        spreadShot: 15,
+        bomb: 45,
     };
 
     // Background music
@@ -93,18 +93,23 @@ scene("game", () => {
     ]);
 
     // Movement controls
-    onKeyDown("left", () => player.move(-PLAYER_SPEED, 0));
-    onKeyDown("right", () => player.move(PLAYER_SPEED, 0));
-    onKeyDown("up", () => player.move(0, -PLAYER_SPEED));
-    onKeyDown("down", () => player.move(0, PLAYER_SPEED));
+    onKeyDown("left", () => player.move(-PLAYER_SPEED, 0)); // Left arrow
+    onKeyDown("right", () => player.move(PLAYER_SPEED, 0)); // Right arrow
+    onKeyDown("up", () => player.move(0, -PLAYER_SPEED)); // Up arrow
+    onKeyDown("down", () => player.move(0, PLAYER_SPEED)); // Down arrow
+
+    onKeyDown("a", () => player.move(-PLAYER_SPEED, 0)); // A key
+    onKeyDown("d", () => player.move(PLAYER_SPEED, 0)); // D key
+    onKeyDown("w", () => player.move(0, -PLAYER_SPEED)); // W key
+    onKeyDown("s", () => player.move(0, PLAYER_SPEED)); // S key
 
     // Shooting logic
     function shoot() {
         play("shoot");
         const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
 
-        // Bomb logic
         if (player.hasBomb) {
+            // Launch a single bomb
             add([
                 rect(15, 15),
                 pos(bulletPos),
@@ -117,19 +122,20 @@ scene("game", () => {
                         if (this.pos.y < height() / 2) {
                             // Only process objects with "enemy" tag
                             get("enemy").forEach((enemy) => {
-                                if ("pos" in enemy) {
+                                if ("pos" in enemy && enemy.pos) {
                                     displayPoints(enemy.pos, enemy.points || 0);
                                     destroy(enemy);
                                 }
                             });
                             createExplosion(this.pos);
                             destroy(this);
-                            player.hasBomb = false; // Revert to normal bullets
+                            player.hasBomb = false; // Reset bomb ability
                         }
                     }
                 }
             ]);
         } else if (player.spreadShot) {
+            // Spread shot logic
             [-15, 0, 15].forEach(offset => {
                 add([
                     rect(6, 15),
@@ -141,6 +147,7 @@ scene("game", () => {
                 ]);
             });
         } else {
+            // Regular bullet
             add([
                 rect(6, 15),
                 pos(bulletPos),
@@ -151,6 +158,8 @@ scene("game", () => {
             ]);
         }
     }
+
+    // Spacebar shooting
     onKeyPress("space", () => {
         if (!player.rapidFire) {
             shoot();
@@ -207,10 +216,10 @@ scene("game", () => {
 
         if (type === "forcefield") {
             player.forcefield = true;
-            player.use(sprite("forcefield", { width: 50, height: 50 })); // Switch to forcefield sprite
+            player.use(sprite("forcefield", { width: 50, height: 50 }));
             wait(10, () => {
                 player.forcefield = false;
-                player.use(sprite("player", { width: 50, height: 50 })); // Revert to normal sprite
+                player.use(sprite("player", { width: 50, height: 50 }));
             });
         } else if (type === "rapidFire") {
             player.rapidFire = true;
@@ -266,7 +275,7 @@ scene("game", () => {
         if (score >= difficulty * 1000) {
             difficulty += 1;
             levelText.text = "Level: " + difficulty;
-            enemyTypes.forEach(e => e.speed *= 1.1); // Increase speed by 10%
+            enemyTypes.forEach(e => e.speed *= 1.1);
         }
     });
 
@@ -287,12 +296,12 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1.4\n\n" +
+            "MiloInvasion V1.5\n\n" +
                 "Instructions:\n" +
-                "- Arrow keys to move\n" +
+                "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
                 "Power-Ups:\n" +
-                "Green: Forcefield (changes player sprite)\n" +
+                "Green: Forcefield\n" +
                 "Light Purple: Rapid Fire (hold SPACE)\n" +
                 "White: Extra Life\n" +
                 "Blue: Spread Shot\n" +
