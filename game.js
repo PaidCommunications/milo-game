@@ -160,9 +160,9 @@ scene("game", () => {
     function displayPoints(position, points) {
         add([
             text(`+${points}`, { size: 20, color: rgb(255, 255, 255) }),
-            pos(position), // Correct usage of pos() as a component
-            lifespan(1),   // Display for 1 second
-            move(UP, 50)   // Float upwards slightly
+            pos(position),
+            lifespan(1), // Display for 1 second
+            move(UP, 50) // Float upwards slightly
         ]);
     }
 
@@ -215,7 +215,8 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "Instructions:\n" +
+            "MiloInvasion V1\n\n" + // Added title here
+                "Instructions:\n" +
                 "- Arrow keys to move\n" +
                 "- Spacebar to shoot\n" +
                 "Power-Ups:\n" +
