@@ -59,15 +59,18 @@ scene("game", () => {
             rapidFire: false,
             spreadShot: false,
             hasBomb: false,
-            powerUpTime: 0
+            powerUpTime: 0,
+            isInvisible: false // To track temporary disappearance
         },
         "player"
     ]);
 
     // Restrict player to the game window
     player.onUpdate(() => {
-        player.pos.x = clamp(player.pos.x, 0, width() - player.width);
-        player.pos.y = clamp(player.pos.y, 0, height() - player.height);
+        if (!player.isInvisible) {
+            player.pos.x = clamp(player.pos.x, 0, width() - player.width);
+            player.pos.y = clamp(player.pos.y, 0, height() - player.height);
+        }
 
         // Handle invincibility blinking
         if (player.forcefield) {
@@ -169,6 +172,15 @@ scene("game", () => {
         }
     });
 
+    // Handle collision with bullets and enemies
+    onCollide("bullet", "enemy", (bullet, enemy) => {
+        destroy(bullet);
+        displayPoints(enemy.pos, enemy.points);
+        destroy(enemy);
+        score += enemy.points;
+        scoreText.text = "Score: " + score;
+    });
+
     // Handle collision with enemies
     onCollide("player", "enemy", (player, enemy) => {
         if (player.forcefield) {
@@ -177,10 +189,20 @@ scene("game", () => {
             score += enemy.points;
             scoreText.text = "Score: " + score;
         } else {
-            play("explosion"); // Play explosion sound
+            // Player loses a life
+            play("explosion");
             destroy(enemy);
             lives--;
             livesText.text = "Lives: " + lives;
+
+            if (lives > 0) {
+                player.isInvisible = true; // Hide the player
+                player.hidden = true;
+                wait(1, () => {
+                    player.isInvisible = false; // Show the player after 1 second
+                    player.hidden = false;
+                });
+            }
 
             if (lives <= 0) {
                 gameOver = true;
@@ -278,7 +300,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1.7\n\n" +
+            "MiloInvasion V1.8\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
