@@ -98,10 +98,12 @@ scene("game", () => {
     onKeyDown("up", () => player.move(0, -PLAYER_SPEED));
     onKeyDown("down", () => player.move(0, PLAYER_SPEED));
 
-    // Shooting
+    // Shooting logic
     function shoot() {
         play("shoot");
         const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
+
+        // Bomb logic
         if (player.hasBomb) {
             add([
                 rect(15, 15),
@@ -113,17 +115,16 @@ scene("game", () => {
                 {
                     update() {
                         if (this.pos.y < height() / 2) {
-                            // Only destroy enemies
-                            const enemies = get("enemy");
-                            enemies.forEach((enemy) => {
-                                if (enemy.pos) {
-                                    displayPoints(enemy.pos, enemy.points);
+                            // Only process objects with "enemy" tag
+                            get("enemy").forEach((enemy) => {
+                                if ("pos" in enemy) {
+                                    displayPoints(enemy.pos, enemy.points || 0);
                                     destroy(enemy);
                                 }
                             });
                             createExplosion(this.pos);
                             destroy(this);
-                            player.hasBomb = false;
+                            player.hasBomb = false; // Revert to normal bullets
                         }
                     }
                 }
@@ -286,7 +287,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1.3\n\n" +
+            "MiloInvasion V1.4\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys to move\n" +
                 "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
