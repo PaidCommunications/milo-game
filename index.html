@@ -1,36 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Milo's Space Game</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Player Game</title>
+    <!-- Kaboom.js -->
+    <script src="https://unpkg.com/kaboom/dist/kaboom.js"></script>
     <style>
-        * {
+        body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        html, body {
-            width: 100%;
-            height: 100%;
             overflow: hidden;
-            background-color: #2c3e50;
+            background: #000; /* Optional: Black background around canvas */
         }
-
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
         canvas {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain;
+            display: block;
+            margin: 0 auto;
         }
     </style>
 </head>
 <body>
-    <script src="https://unpkg.com/kaboom/dist/kaboom.js"></script>
-    <script src="game.js" type="module"></script>
+    <!-- Canvas for the Kaboom.js game -->
+    <canvas></canvas>
+
+    <!-- Game Script -->
+    <script src="game.js"></script>
 </body>
 </html>
