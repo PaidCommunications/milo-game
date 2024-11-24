@@ -2,7 +2,7 @@
 kaboom({
     width: window.innerWidth,
     height: window.innerHeight,
-    background: [0, 0, 30],
+    background: [40, 40, 40], // Match the background color to objects
     canvas: document.querySelector("canvas"),
     stretch: true,
     letterbox: true
@@ -95,6 +95,17 @@ scene("game", () => {
         }
     });
 
+    // Player movement controls
+    onKeyDown("left", () => player.move(-PLAYER_SPEED, 0)); // Left arrow
+    onKeyDown("right", () => player.move(PLAYER_SPEED, 0)); // Right arrow
+    onKeyDown("up", () => player.move(0, -PLAYER_SPEED)); // Up arrow
+    onKeyDown("down", () => player.move(0, PLAYER_SPEED)); // Down arrow
+
+    onKeyDown("a", () => player.move(-PLAYER_SPEED, 0)); // A key
+    onKeyDown("d", () => player.move(PLAYER_SPEED, 0)); // D key
+    onKeyDown("w", () => player.move(0, -PLAYER_SPEED)); // W key
+    onKeyDown("s", () => player.move(0, PLAYER_SPEED)); // S key
+
     // Shooting logic
     function shoot() {
         play("shoot");
@@ -158,7 +169,31 @@ scene("game", () => {
         }
     });
 
-    // Handle collision with power-ups
+    // Handle collision with enemies
+    onCollide("player", "enemy", (player, enemy) => {
+        if (player.forcefield) {
+            displayPoints(enemy.pos, enemy.points);
+            destroy(enemy);
+            score += enemy.points;
+            scoreText.text = "Score: " + score;
+        } else {
+            play("explosion"); // Play explosion sound
+            destroy(enemy);
+            lives--;
+            livesText.text = "Lives: " + lives;
+
+            if (lives <= 0) {
+                gameOver = true;
+                add([
+                    text("Game Over! Press SPACE to restart.", { size: 32 }),
+                    pos(width() / 2 - 200, height() / 2)
+                ]);
+                onKeyPress("space", () => go("game"));
+            }
+        }
+    });
+
+    // Power-Up Logic
     onCollide("player", "powerUp", (player, powerUp) => {
         const type = powerUp.powerUpType;
         destroy(powerUp);
@@ -243,7 +278,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1.6\n\n" +
+            "MiloInvasion V1.7\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
