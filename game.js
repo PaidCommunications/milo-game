@@ -12,8 +12,7 @@ scene("game", () => {
     let difficulty = 1;
     let lives = 3;
     let spawnTime = 0;
-    const MAX_DIFFICULTY = 10;
-    const MIN_SPAWN_RATE = 0.3;
+    const MIN_SPAWN_RATE = 0.2;
     
     // Add player
     const player = add([
@@ -218,16 +217,16 @@ scene("game", () => {
         { width: 60, height: 60, color: [128, 0, 0], speed: 50, points: 30 }
     ];
 
-    // Enemy spawning with controlled speed
+    // Enemy spawning with infinite scaling
     function spawnEnemy() {
         if (gameOver) return;
         
-        const maxTypeIndex = Math.min(enemyTypes.length - 1, Math.floor((difficulty - 1) / 3));
-        const typeIndex = Math.floor(rand(0, maxTypeIndex + 1));
+        // All enemy types available after level 6
+        const typeIndex = Math.floor(rand(0, enemyTypes.length));
         const enemyType = enemyTypes[typeIndex];
         
-        // Cap speed increase
-        const speedMultiplier = Math.min(1 + (difficulty * 0.1), 2.5);
+        // Logarithmic speed scaling - increases but not linearly
+        const speedMultiplier = Math.log10(difficulty + 1) + 1;
         
         add([
             rect(enemyType.width, enemyType.height),
@@ -236,23 +235,24 @@ scene("game", () => {
             move(DOWN, enemyType.speed * speedMultiplier),           
             area(),
             "enemy",
-            { points: enemyType.points }
+            { points: enemyType.points * Math.floor(speedMultiplier) } // Points scale with difficulty
         ]);
     }
 
-    // Game update loop
+    // Game update loop with infinite levels
     onUpdate(() => {
         if (!gameOver) {
-            // Update difficulty
+            // Update difficulty - no cap
             const newDifficulty = 1 + Math.floor(scoreText.value / 100);
             if (newDifficulty !== difficulty) {
-                difficulty = Math.min(newDifficulty, MAX_DIFFICULTY);
+                difficulty = newDifficulty;
                 levelText.text = "Level: " + difficulty;
             }
 
             // Spawn enemies at controlled rate
             spawnTime += dt();
-            if (spawnTime >= Math.max(MIN_SPAWN_RATE, 1 / difficulty)) {
+            const spawnRate = Math.max(MIN_SPAWN_RATE, 1 / (Math.log2(difficulty + 1)));
+            if (spawnTime >= spawnRate) {
                 spawnEnemy();
                 spawnTime = 0;
             }
