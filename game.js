@@ -74,18 +74,18 @@ scene("game", () => {
 
     // Enemy spawning
     const enemyTypes = [
-        { sprite: "enemy1", speed: 100, points: 10 },
-        { sprite: "enemy2", speed: 150, points: 25 },
-        { sprite: "enemy3", speed: 200, points: 50 }
+        { sprite: "enemy1", width: 100, height: 100, speed: 100, points: 10 },
+        { sprite: "enemy2", width: 70, height: 70, speed: 150, points: 25 },
+        { sprite: "enemy3", width: 45, height: 45, speed: 200, points: 50 }
     ];
 
     function spawnEnemy() {
         const enemy = choose(enemyTypes);
 
         add([
-            sprite(enemy.sprite, { width: 30, height: 30 }), // Force size to 30x30
-            pos(rand(0, width() - 30), 0),                  // Random spawn position
-            move(DOWN, enemy.speed * difficulty),           // Increase speed with difficulty
+            sprite(enemy.sprite, { width: enemy.width, height: enemy.height }), // Adjusted size for each enemy type
+            pos(rand(0, width() - enemy.width), 0),                           // Ensure spawn within bounds
+            move(DOWN, enemy.speed * difficulty),                             // Adjust speed based on difficulty
             area(),
             "enemy",
             { points: enemy.points }
