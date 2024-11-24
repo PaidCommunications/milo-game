@@ -161,7 +161,7 @@ scene("game", () => {
     function displayPoints(pos, points) {
         add([
             text(`+${points}`, { size: 20, color: rgb(255, 255, 255) }),
-            pos,
+            pos(pos), // Ensure the text object has a position
             lifespan(1), // Display for 1 second
             move(UP, 50) // Float upwards slightly
         ]);
