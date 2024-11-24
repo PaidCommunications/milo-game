@@ -25,7 +25,7 @@ let highScores = JSON.parse(localStorage.getItem(HIGH_SCORES_KEY)) || [];
 scene("game", () => {
     let gameOver = false;
     let difficulty = 1;
-    let lives = 3;
+    let score = 0;
     let spawnTime = 0;
     const PLAYER_SPEED = 400;
 
@@ -37,15 +37,19 @@ scene("game", () => {
         sprite("player"),
         pos(width() / 2, height() - 100),
         area(),
-        {
-            powerUpTime: 0,
-            speedMultiplier: 1,
-            isInvincible: false,
-            autoShoot: false,
-            spreadShot: false,
-            hasBomb: false
-        },
         "player"
+    ]);
+
+    // Display score, lives, and level
+    const scoreText = add([
+        text("Score: 0", { size: 24 }),
+        pos(20, 20),
+        { value: 0 }
+    ]);
+
+    const levelText = add([
+        text("Level: 1", { size: 24 }),
+        pos(20, 50)
     ]);
 
     // Movement controls
@@ -58,7 +62,7 @@ scene("game", () => {
     function shoot() {
         play("shoot");
         add([
-            rect(6, 15), // Default bullet
+            rect(6, 15),
             pos(player.pos.x + 22, player.pos.y),
             move(UP, 400),
             area(),
@@ -71,15 +75,17 @@ scene("game", () => {
     // Enemy spawning
     const enemyTypes = [
         { sprite: "enemy1", speed: 100, points: 10 },
-        { sprite: "enemy2", speed: 150, points: 20 },
-        { sprite: "enemy3", speed: 75, points: 30 }
+        { sprite: "enemy2", speed: 150, points: 25 },
+        { sprite: "enemy3", speed: 200, points: 50 }
     ];
+
     function spawnEnemy() {
         const enemy = choose(enemyTypes);
+
         add([
-            sprite(enemy.sprite),
-            pos(rand(0, width() - 40), 0),
-            move(DOWN, enemy.speed + difficulty * 10),
+            sprite(enemy.sprite, { width: 30, height: 30 }), // Force size to 30x30
+            pos(rand(0, width() - 30), 0),                  // Random spawn position
+            move(DOWN, enemy.speed * difficulty),           // Increase speed with difficulty
             area(),
             "enemy",
             { points: enemy.points }
@@ -100,40 +106,49 @@ scene("game", () => {
         }
     }
 
-    // Score and lives display
-    let score = 0;
-    const scoreText = add([
-        text("Score: 0"),
-        pos(20, 20),
-        { value: 0 }
-    ]);
-    const livesText = add([
-        text("Lives: 3"),
-        pos(20, 50)
-    ]);
-
     // Collisions
     onCollide("bullet", "enemy", (bullet, enemy) => {
         destroy(bullet);
         destroy(enemy);
         score += enemy.points;
+        scoreText.value = score;
         scoreText.text = "Score: " + score;
-    });
 
-    onCollide("enemy", "player", (enemy, player) => {
-        if (!player.isInvincible) {
-            destroy(enemy);
-            lives--;
-            livesText.text = "Lives: " + lives;
-            if (lives <= 0) {
-                gameOver = true;
-                add([text("Game Over!", { size: 32 }), pos(width() / 2 - 100, height() / 2)]);
-                add([text("Final Score: " + score, { size: 32 }), pos(width() / 2 - 100, height() / 2 + 50)]);
-            }
+        // Check for level-up
+        if (score >= difficulty * 1000) {
+            difficulty += 1;
+            levelText.text = "Level: " + difficulty;
+
+            // Speed up enemies
+            enemyTypes.forEach((e) => {
+                e.speed *= 1.5; // Increase speed by 50%
+            });
         }
     });
 
-    // Enemy spawning loop
+    onCollide("enemy", "player", (enemy, player) => {
+        destroy(enemy);
+        gameOver = true;
+
+        add([
+            text("Game Over!", { size: 32 }),
+            pos(width() / 2 - 100, height() / 2 - 50)
+        ]);
+
+        add([
+            text("Final Score: " + score, { size: 32 }),
+            pos(width() / 2 - 100, height() / 2)
+        ]);
+
+        add([
+            text("Press SPACE to restart", { size: 24 }),
+            pos(width() / 2 - 100, height() / 2 + 50)
+        ]);
+
+        onKeyPress("space", () => go("game"));
+    });
+
+    // Update loop
     onUpdate(() => {
         if (!gameOver) {
             spawnTime += dt();
