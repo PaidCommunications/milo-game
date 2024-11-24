@@ -109,7 +109,7 @@ scene("game", () => {
         }
 
         // Rapid fire shooting
-        if (player.rapidFire && time() - lastShotTime > 0.1) {
+        if (player.rapidFire && !player.isInvisible && time() - lastShotTime > 0.1) {
             shoot();
             lastShotTime = time();
         }
@@ -128,6 +128,7 @@ scene("game", () => {
 
     // Shooting logic
     function shoot() {
+        if (player.isInvisible) return; // Prevent shooting while invisible
         play("shoot");
         const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
 
@@ -143,7 +144,6 @@ scene("game", () => {
                 {
                     update() {
                         if (this.pos.y < height() / 2) {
-                            // Destroy enemies
                             get("enemy").forEach((enemy) => {
                                 if ("pos" in enemy && enemy.pos) {
                                     displayPoints(enemy.pos, enemy.points || 0);
@@ -180,6 +180,44 @@ scene("game", () => {
         }
     }
 
+    // Spacebar shooting
+    onKeyPress("space", () => {
+        if (!player.isInvisible) {
+            shoot();
+        }
+    });
+
+    // Handle collision with enemies
+    onCollide("player", "enemy", (player, enemy) => {
+        if (player.forcefield) {
+            displayPoints(enemy.pos, enemy.points);
+            destroy(enemy);
+            score += enemy.points;
+            scoreText.text = "Score: " + score;
+        } else {
+            play("explosion");
+            destroy(enemy);
+            lives--;
+            livesText.text = "Lives: " + lives;
+
+            if (lives > 0) {
+                player.isInvisible = true; // Hide player
+                player.hidden = true; // Make player disappear
+                wait(1, () => {
+                    player.isInvisible = false; // Make player visible
+                    player.hidden = false;
+                });
+            } else {
+                gameOver = true;
+                add([
+                    text("Game Over! Press SPACE to restart.", { size: 32 }),
+                    pos(width() / 2 - 200, height() / 2)
+                ]);
+                onKeyPress("space", () => go("game"));
+            }
+        }
+    });
+
     // Power-Up Spawning
     function spawnPowerUps() {
         const now = time();
@@ -209,21 +247,7 @@ scene("game", () => {
         }
     }
 
-    // Update loop
-    onUpdate(() => {
-        if (!gameOver) {
-            spawnTime += dt();
-
-            if (spawnTime > 1 / difficulty) {
-                spawnEnemy();
-                spawnTime = 0;
-            }
-
-            spawnPowerUps();
-        }
-    });
-
-    // Enemy spawning function
+    // Spawn enemies
     const enemyTypes = [
         { sprite: "enemy1", width: 100, height: 100, speed: 100, points: 10 },
         { sprite: "enemy2", width: 70, height: 70, speed: 150, points: 25 },
@@ -265,13 +289,26 @@ scene("game", () => {
             move(UP, 50)
         ]);
     }
+
+    // Update loop
+    onUpdate(() => {
+        if (!gameOver) {
+            spawnTime += dt();
+            if (spawnTime > 1 / difficulty) {
+                spawnEnemy();
+                spawnTime = 0;
+            }
+
+            spawnPowerUps();
+        }
+    });
 });
 
 // Start screen
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1\n\n" +
+            "MiloInvasion V1.1\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
