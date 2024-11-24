@@ -11,6 +11,7 @@ kaboom({
 // Load assets
 loadSprite("player", "assets/player.png");
 loadSprite("forcefield", "assets/forcefield.png");
+loadSprite("invincible", "assets/invincible.png");
 loadSprite("enemy1", "assets/enemy1.png");
 loadSprite("enemy2", "assets/enemy2.png");
 loadSprite("enemy3", "assets/enemy3.png");
@@ -68,40 +69,31 @@ scene("game", () => {
         player.pos.x = clamp(player.pos.x, 0, width() - player.width);
         player.pos.y = clamp(player.pos.y, 0, height() - player.height);
 
+        // Handle invincibility blinking
+        if (player.forcefield) {
+            player.powerUpTime -= dt();
+
+            if (player.powerUpTime <= 2) {
+                const isEven = Math.floor(time() * 10) % 2 === 0;
+                if (isEven) {
+                    player.use(sprite("invincible", { width: 50, height: 50 })); // Blink to invincible sprite
+                } else {
+                    player.use(sprite("player", { width: 50, height: 50 })); // Back to normal sprite
+                }
+            }
+
+            if (player.powerUpTime <= 0) {
+                player.forcefield = false;
+                player.use(sprite("player", { width: 50, height: 50 })); // Reset to normal sprite
+            }
+        }
+
         // Rapid fire shooting
         if (player.rapidFire && time() - lastShotTime > 0.1) {
             shoot();
             lastShotTime = time();
         }
     });
-
-    // Display score, lives, and level
-    const scoreText = add([
-        text("Score: 0", { size: 24 }),
-        pos(20, 20),
-        { value: 0 }
-    ]);
-
-    const livesText = add([
-        text("Lives: 3", { size: 24 }),
-        pos(20, 50)
-    ]);
-
-    const levelText = add([
-        text("Level: 1", { size: 24 }),
-        pos(20, 80)
-    ]);
-
-    // Movement controls
-    onKeyDown("left", () => player.move(-PLAYER_SPEED, 0)); // Left arrow
-    onKeyDown("right", () => player.move(PLAYER_SPEED, 0)); // Right arrow
-    onKeyDown("up", () => player.move(0, -PLAYER_SPEED)); // Up arrow
-    onKeyDown("down", () => player.move(0, PLAYER_SPEED)); // Down arrow
-
-    onKeyDown("a", () => player.move(-PLAYER_SPEED, 0)); // A key
-    onKeyDown("d", () => player.move(PLAYER_SPEED, 0)); // D key
-    onKeyDown("w", () => player.move(0, -PLAYER_SPEED)); // W key
-    onKeyDown("s", () => player.move(0, PLAYER_SPEED)); // S key
 
     // Shooting logic
     function shoot() {
@@ -129,11 +121,11 @@ scene("game", () => {
                             });
                             createExplosion(this.pos);
                             destroy(this);
-                            player.hasBomb = false; // Reset bomb ability
                         }
                     }
                 }
             ]);
+            player.hasBomb = false; // Reset bomb ability immediately
         } else if (player.spreadShot) {
             // Spread shot logic
             [-15, 0, 15].forEach(offset => {
@@ -163,6 +155,32 @@ scene("game", () => {
     onKeyPress("space", () => {
         if (!player.rapidFire) {
             shoot();
+        }
+    });
+
+    // Handle collision with power-ups
+    onCollide("player", "powerUp", (player, powerUp) => {
+        const type = powerUp.powerUpType;
+        destroy(powerUp);
+
+        // Disable rapid fire when any power-up is picked up
+        player.rapidFire = false;
+
+        if (type === "forcefield") {
+            player.forcefield = true;
+            player.powerUpTime = 10; // Set invincibility duration to 10 seconds
+            player.use(sprite("forcefield", { width: 50, height: 50 })); // Set initial invincible sprite
+        } else if (type === "rapidFire") {
+            player.rapidFire = true;
+            wait(10, () => (player.rapidFire = false));
+        } else if (type === "extraLife") {
+            lives++;
+            livesText.text = "Lives: " + lives;
+        } else if (type === "spreadShot") {
+            player.spreadShot = true;
+            wait(10, () => (player.spreadShot = false));
+        } else if (type === "bomb") {
+            player.hasBomb = true;
         }
     });
 
@@ -209,76 +227,6 @@ scene("game", () => {
         ]);
     }
 
-    // Power-Up Logic
-    onCollide("player", "powerUp", (player, powerUp) => {
-        const type = powerUp.powerUpType;
-        destroy(powerUp);
-
-        if (type === "forcefield") {
-            player.forcefield = true;
-            player.use(sprite("forcefield", { width: 50, height: 50 }));
-            wait(10, () => {
-                player.forcefield = false;
-                player.use(sprite("player", { width: 50, height: 50 }));
-            });
-        } else if (type === "rapidFire") {
-            player.rapidFire = true;
-            wait(10, () => (player.rapidFire = false));
-        } else if (type === "extraLife") {
-            lives++;
-            livesText.text = "Lives: " + lives;
-        } else if (type === "spreadShot") {
-            player.spreadShot = true;
-            wait(10, () => (player.spreadShot = false));
-        } else if (type === "bomb") {
-            player.hasBomb = true;
-        }
-    });
-
-    // Spawn power-ups based on timers
-    function spawnPowerUps() {
-        const now = time();
-
-        for (const type in powerUpTimers) {
-            if (now - powerUpTimers[type] >= powerUpIntervals[type]) {
-                powerUpTimers[type] = now;
-
-                const colorMap = {
-                    forcefield: [0, 255, 0],
-                    rapidFire: [255, 100, 255],
-                    extraLife: [255, 255, 255],
-                    spreadShot: [0, 0, 255],
-                    bomb: [128, 0, 128]
-                };
-
-                add([
-                    rect(30, 30),
-                    pos(rand(0, width() - 30), 0),
-                    color(colorMap[type][0], colorMap[type][1], colorMap[type][2]),
-                    move(DOWN, 50),
-                    area(),
-                    "powerUp",
-                    { powerUpType: type }
-                ]);
-            }
-        }
-    }
-
-    // Collisions
-    onCollide("bullet", "enemy", (bullet, enemy) => {
-        destroy(bullet);
-        displayPoints(enemy.pos, enemy.points);
-        destroy(enemy);
-        score += enemy.points;
-        scoreText.text = "Score: " + score;
-
-        if (score >= difficulty * 1000) {
-            difficulty += 1;
-            levelText.text = "Level: " + difficulty;
-            enemyTypes.forEach(e => e.speed *= 1.1);
-        }
-    });
-
     // Update loop
     onUpdate(() => {
         if (!gameOver) {
@@ -287,7 +235,6 @@ scene("game", () => {
                 spawnEnemy();
                 spawnTime = 0;
             }
-            spawnPowerUps();
         }
     });
 });
@@ -296,7 +243,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1.5\n\n" +
+            "MiloInvasion V1.6\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
