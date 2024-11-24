@@ -26,6 +26,23 @@ scene("game", () => {
     const PLAYER_SPEED = 400;
     let lives = 3;
 
+    // Timers for power-up spawns
+    const powerUpTimers = {
+        forcefield: time(),
+        rapidFire: time(),
+        extraLife: time(),
+        spreadShot: time(),
+        bomb: time(),
+    };
+
+    const powerUpIntervals = {
+        forcefield: 30, // Every 30 seconds
+        rapidFire: 20,  // Every 20 seconds
+        extraLife: 60,  // Every 60 seconds
+        spreadShot: 15, // Every 15 seconds
+        bomb: 45,       // Every 45 seconds
+    };
+
     // Background music
     play("background", { loop: true });
 
@@ -161,9 +178,38 @@ scene("game", () => {
         add([
             text(`+${points}`, { size: 20, color: rgb(255, 255, 255) }),
             pos(position),
-            lifespan(1), // Display for 1 second
-            move(UP, 50) // Float upwards slightly
+            lifespan(1),
+            move(UP, 50)
         ]);
+    }
+
+    // Spawn power-ups based on timers
+    function spawnPowerUps() {
+        const now = time();
+
+        for (const type in powerUpTimers) {
+            if (now - powerUpTimers[type] >= powerUpIntervals[type]) {
+                powerUpTimers[type] = now;
+
+                const colorMap = {
+                    forcefield: [0, 255, 0],
+                    rapidFire: [255, 100, 255],
+                    extraLife: [255, 255, 255],
+                    spreadShot: [0, 0, 255],
+                    bomb: [128, 0, 128]
+                };
+
+                add([
+                    rect(30, 30),
+                    pos(rand(0, width() - 30), 0),
+                    color(colorMap[type][0], colorMap[type][1], colorMap[type][2]),
+                    move(DOWN, 50),
+                    area(),
+                    "powerUp",
+                    { powerUpType: type }
+                ]);
+            }
+        }
     }
 
     // Collisions
@@ -177,7 +223,7 @@ scene("game", () => {
         if (score >= difficulty * 1000) {
             difficulty += 1;
             levelText.text = "Level: " + difficulty;
-            enemyTypes.forEach(e => e.speed *= 1.5);
+            enemyTypes.forEach(e => e.speed *= 1.1); // Increase speed by 10%
         }
     });
 
@@ -199,6 +245,27 @@ scene("game", () => {
         }
     });
 
+    onCollide("player", "powerUp", (player, powerUp) => {
+        const type = powerUp.powerUpType;
+        destroy(powerUp);
+
+        if (type === "forcefield") {
+            player.forcefield = true;
+            wait(10, () => (player.forcefield = false));
+        } else if (type === "rapidFire") {
+            player.rapidFire = true;
+            wait(10, () => (player.rapidFire = false));
+        } else if (type === "extraLife") {
+            lives++;
+            livesText.text = "Lives: " + lives;
+        } else if (type === "spreadShot") {
+            player.spreadShot = true;
+            wait(10, () => (player.spreadShot = false));
+        } else if (type === "bomb") {
+            player.hasBomb = true;
+        }
+    });
+
     // Update loop
     onUpdate(() => {
         if (!gameOver) {
@@ -207,6 +274,7 @@ scene("game", () => {
                 spawnEnemy();
                 spawnTime = 0;
             }
+            spawnPowerUps();
         }
     });
 });
@@ -215,7 +283,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1\n\n" + // Added title here
+            "MiloInvasion V1.1\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys to move\n" +
                 "- Spacebar to shoot\n" +
