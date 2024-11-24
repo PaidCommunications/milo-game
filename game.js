@@ -26,7 +26,8 @@ scene("game", () => {
     let score = 0;
     let spawnTime = 0;
     let lastShotTime = 0;
-    const PLAYER_SPEED = 400;
+    let powerUpSpeed = 75; // Base power-up speed (50% faster)
+    let playerSpeed = 400; // Base player speed
     let lives = 3;
 
     // Display score, lives, and level
@@ -62,7 +63,6 @@ scene("game", () => {
         bomb: time(),
     };
 
-    // Different power-up spawn intervals
     const powerUpIntervals = {
         forcefield: 35,
         rapidFire: 25,
@@ -121,35 +121,35 @@ scene("game", () => {
 
     // Player movement controls
     onKeyDown("left", () => {
-        if (!player.isInvisible) player.move(-PLAYER_SPEED, 0);
+        if (!player.isInvisible) player.move(-playerSpeed, 0);
     });
 
     onKeyDown("right", () => {
-        if (!player.isInvisible) player.move(PLAYER_SPEED, 0);
+        if (!player.isInvisible) player.move(playerSpeed, 0);
     });
 
     onKeyDown("up", () => {
-        if (!player.isInvisible) player.move(0, -PLAYER_SPEED);
+        if (!player.isInvisible) player.move(0, -playerSpeed);
     });
 
     onKeyDown("down", () => {
-        if (!player.isInvisible) player.move(0, PLAYER_SPEED);
+        if (!player.isInvisible) player.move(0, playerSpeed);
     });
 
     onKeyDown("a", () => {
-        if (!player.isInvisible) player.move(-PLAYER_SPEED, 0);
+        if (!player.isInvisible) player.move(-playerSpeed, 0);
     });
 
     onKeyDown("d", () => {
-        if (!player.isInvisible) player.move(PLAYER_SPEED, 0);
+        if (!player.isInvisible) player.move(playerSpeed, 0);
     });
 
     onKeyDown("w", () => {
-        if (!player.isInvisible) player.move(0, -PLAYER_SPEED);
+        if (!player.isInvisible) player.move(0, -playerSpeed);
     });
 
     onKeyDown("s", () => {
-        if (!player.isInvisible) player.move(0, PLAYER_SPEED);
+        if (!player.isInvisible) player.move(0, playerSpeed);
     });
 
     // Shooting logic
@@ -253,7 +253,21 @@ scene("game", () => {
         }
     });
 
-    // Spawn power-ups
+    // Update loop
+    onUpdate(() => {
+        if (!gameOver) {
+            spawnTime += dt();
+
+            if (spawnTime > 1 / difficulty) {
+                spawnEnemy();
+                spawnTime = 0;
+            }
+
+            spawnPowerUps();
+        }
+    });
+
+    // Spawn power-ups with speed scaling
     function spawnPowerUps() {
         const now = time();
 
@@ -273,7 +287,7 @@ scene("game", () => {
                     rect(30, 30),
                     pos(rand(0, width() - 30), 0),
                     color(colorMap[type][0], colorMap[type][1], colorMap[type][2]),
-                    move(DOWN, 50),
+                    move(DOWN, powerUpSpeed * Math.pow(1.1, difficulty - 1)), // Increase speed per level
                     area(),
                     "powerUp",
                     { powerUpType: type }
@@ -282,21 +296,7 @@ scene("game", () => {
         }
     }
 
-    // Update loop
-    onUpdate(() => {
-        if (!gameOver) {
-            spawnTime += dt();
-
-            if (spawnTime > 1 / difficulty) {
-                spawnEnemy();
-                spawnTime = 0;
-            }
-
-            spawnPowerUps();
-        }
-    });
-
-    // Spawn an enemy
+    // Spawn enemies with difficulty scaling
     function spawnEnemy() {
         const enemy = choose(enemyTypes);
 
@@ -383,7 +383,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V2\n\n" +
+            "MiloInvasion V1\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot\n" +
