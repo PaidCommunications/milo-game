@@ -23,7 +23,6 @@ scene("game", () => {
     let difficulty = 1;
     let score = 0;
     let spawnTime = 0;
-    let lastPowerUpTime = time();
     const PLAYER_SPEED = 400;
     let lives = 3;
 
@@ -158,12 +157,12 @@ scene("game", () => {
     }
 
     // Display points on enemy death
-    function displayPoints(pos, points) {
+    function displayPoints(position, points) {
         add([
             text(`+${points}`, { size: 20, color: rgb(255, 255, 255) }),
-            pos(pos), // Ensure the text object has a position
-            lifespan(1), // Display for 1 second
-            move(UP, 50) // Float upwards slightly
+            pos(position), // Correct usage of pos() as a component
+            lifespan(1),   // Display for 1 second
+            move(UP, 50)   // Float upwards slightly
         ]);
     }
 
@@ -197,26 +196,6 @@ scene("game", () => {
             }
         } else {
             destroy(enemy);
-        }
-    });
-
-    onCollide("player", "powerUp", (player, powerUp) => {
-        const { type } = powerUp.powerUpType;
-        destroy(powerUp);
-        if (type === "forcefield") {
-            player.forcefield = true;
-            wait(10, () => (player.forcefield = false));
-        } else if (type === "rapidFire") {
-            player.rapidFire = true;
-            wait(10, () => (player.rapidFire = false));
-        } else if (type === "extraLife") {
-            lives++;
-            livesText.text = "Lives: " + lives;
-        } else if (type === "spreadShot") {
-            player.spreadShot = true;
-            wait(10, () => (player.spreadShot = false));
-        } else if (type === "bomb") {
-            player.hasBomb = true;
         }
     });
 
