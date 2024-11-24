@@ -10,6 +10,7 @@ kaboom({
 
 // Load assets
 loadSprite("player", "assets/player.png");
+loadSprite("forcefield", "assets/forcefield.png"); // Forcefield sprite
 loadSprite("enemy1", "assets/enemy1.png");
 loadSprite("enemy2", "assets/enemy2.png");
 loadSprite("enemy3", "assets/enemy3.png");
@@ -112,10 +113,13 @@ scene("game", () => {
                 {
                     update() {
                         if (this.pos.y < height() / 2) {
+                            // Only destroy enemies
                             const enemies = get("enemy");
                             enemies.forEach((enemy) => {
-                                displayPoints(enemy.pos, enemy.points);
-                                destroy(enemy);
+                                if (enemy.pos) {
+                                    displayPoints(enemy.pos, enemy.points);
+                                    destroy(enemy);
+                                }
                             });
                             createExplosion(this.pos);
                             destroy(this);
@@ -195,6 +199,32 @@ scene("game", () => {
         ]);
     }
 
+    // Power-Up Logic
+    onCollide("player", "powerUp", (player, powerUp) => {
+        const type = powerUp.powerUpType;
+        destroy(powerUp);
+
+        if (type === "forcefield") {
+            player.forcefield = true;
+            player.use(sprite("forcefield", { width: 50, height: 50 })); // Switch to forcefield sprite
+            wait(10, () => {
+                player.forcefield = false;
+                player.use(sprite("player", { width: 50, height: 50 })); // Revert to normal sprite
+            });
+        } else if (type === "rapidFire") {
+            player.rapidFire = true;
+            wait(10, () => (player.rapidFire = false));
+        } else if (type === "extraLife") {
+            lives++;
+            livesText.text = "Lives: " + lives;
+        } else if (type === "spreadShot") {
+            player.spreadShot = true;
+            wait(10, () => (player.spreadShot = false));
+        } else if (type === "bomb") {
+            player.hasBomb = true;
+        }
+    });
+
     // Spawn power-ups based on timers
     function spawnPowerUps() {
         const now = time();
@@ -239,45 +269,6 @@ scene("game", () => {
         }
     });
 
-    onCollide("player", "enemy", (player, enemy) => {
-        if (!player.forcefield) {
-            destroy(enemy);
-            lives--;
-            livesText.text = "Lives: " + lives;
-            if (lives <= 0) {
-                gameOver = true;
-                add([
-                    text("Game Over! Press SPACE to restart.", { size: 32 }),
-                    pos(width() / 2 - 200, height() / 2)
-                ]);
-                onKeyPress("space", () => go("game"));
-            }
-        } else {
-            destroy(enemy);
-        }
-    });
-
-    onCollide("player", "powerUp", (player, powerUp) => {
-        const type = powerUp.powerUpType;
-        destroy(powerUp);
-
-        if (type === "forcefield") {
-            player.forcefield = true;
-            wait(10, () => (player.forcefield = false));
-        } else if (type === "rapidFire") {
-            player.rapidFire = true;
-            wait(10, () => (player.rapidFire = false));
-        } else if (type === "extraLife") {
-            lives++;
-            livesText.text = "Lives: " + lives;
-        } else if (type === "spreadShot") {
-            player.spreadShot = true;
-            wait(10, () => (player.spreadShot = false));
-        } else if (type === "bomb") {
-            player.hasBomb = true;
-        }
-    });
-
     // Update loop
     onUpdate(() => {
         if (!gameOver) {
@@ -295,12 +286,12 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1.2\n\n" +
+            "MiloInvasion V1.3\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys to move\n" +
                 "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
                 "Power-Ups:\n" +
-                "Green: Forcefield\n" +
+                "Green: Forcefield (changes player sprite)\n" +
                 "Light Purple: Rapid Fire (hold SPACE)\n" +
                 "White: Extra Life\n" +
                 "Blue: Spread Shot\n" +
