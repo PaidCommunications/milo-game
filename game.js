@@ -22,18 +22,22 @@ scene("game", () => {
     let lives = 3;
     let spawnTime = 0;
     const MIN_SPAWN_RATE = 0.3;
-    
-    // Player base
+    const PLAYER_SIZE = 50;
+    const PLAYER_MARGIN_BOTTOM = 50;
+    const PLAYER_SPEED = 400; // Double original speed
+
+    // Player base at bottom of screen
     const player = add([
-        rect(50, 50),            
-        pos(400, 500),           
+        rect(PLAYER_SIZE, PLAYER_SIZE),            
+        pos(width() / 2, height() - PLAYER_MARGIN_BOTTOM - PLAYER_SIZE),
         color(0, 0, 255),        
         area(),
         {
             powerUpTime: 0,
             isInvincible: false,
             autoShoot: false,
-            spreadShot: false
+            spreadShot: false,
+            hasBomb: false
         },
         "player"                 
     ]);
@@ -78,20 +82,21 @@ scene("game", () => {
     // Player movement
     onKeyDown("a", () => {
         if (!gameOver) {
-            player.move(-200, 0);    
+            player.move(-PLAYER_SPEED, 0);    
         }
     });
 
     onKeyDown("d", () => {
         if (!gameOver) {
-            player.move(200, 0);     
+            player.move(PLAYER_SPEED, 0);    
         }
     });
 
     // Keep player in bounds
     player.onUpdate(() => {
         if (player.pos.x < 0) player.pos.x = 0;
-        if (player.pos.x > width() - 50) player.pos.x = width() - 50;
+        if (player.pos.x > width() - PLAYER_SIZE) player.pos.x = width() - PLAYER_SIZE;
+        player.pos.y = height() - PLAYER_MARGIN_BOTTOM - PLAYER_SIZE; // Lock vertical position
 
         // Handle auto-shoot
         if (player.autoShoot && !gameOver) {
@@ -105,14 +110,13 @@ scene("game", () => {
             // Gold color when invincible
             if (player.isInvincible) {
                 if (player.powerUpTime <= 2) {
-                    // Blink rapidly in last 2 seconds
                     if (Math.floor(time() * 10) % 2 === 0) {
-                        player.use(color(255, 215, 0)); // Gold
+                        player.use(color(255, 215, 0));
                     } else {
-                        player.use(color(0, 0, 255));  // Blue
+                        player.use(color(0, 0, 255));
                     }
                 } else {
-                    player.use(color(255, 215, 0));    // Solid gold
+                    player.use(color(255, 215, 0));
                 }
             }
             
@@ -120,89 +124,83 @@ scene("game", () => {
                 player.isInvincible = false;
                 player.autoShoot = false;
                 player.spreadShot = false;
+                player.hasBomb = false;
                 player.use(color(0, 0, 255));
             }
         }
     });
 
-    // Power-up types
+    // Create explosion effect
+    function createExplosion(p) {
+        // Screen flash
+        add([
+            rect(width(), height()),
+            pos(0, 0),
+            color(255, 255, 255),
+            opacity(0.5),
+            lifespan(0.2)
+        ]);
+
+        // Particle explosion
+        for (let i = 0; i < 32; i++) {
+            const angle = (2 * Math.PI * i) / 32;
+            const speed = rand(100, 200);
+            add([
+                rect(8, 8),
+                pos(p.x, p.y),
+                color(255, 200, 0),
+                move(angle, speed),
+                lifespan(0.5)
+            ]);
+        }
+    }
+
+    // Power-up types including bomb
     const powerUpTypes = [
         { color: [0, 255, 0], type: "shield", duration: 5 },      
         { color: [255, 100, 255], type: "autoShoot", duration: 8 }, 
         { color: [0, 255, 255], type: "spreadShot", duration: 6 },  
-        { color: [255, 255, 255], type: "extraLife", duration: 1 }  
+        { color: [255, 255, 255], type: "extraLife", duration: 1 },
+        { color: [128, 0, 128], type: "bomb", duration: 5 }
     ];
 
-    // Shooting function with 7 bullets
+    // Shooting function with bomb
     function shoot() {
-        if (player.spreadShot) {
-            // Left side bullets
+        if (player.hasBomb) {
+            // Bomb shot
             add([
-                rect(6, 15),
-                pos(player.pos.x + 5, player.pos.y),
+                rect(12, 30), // Large bullet
+                pos(player.pos.x + 19, player.pos.y),
                 color(255, 255, 0),
-                move(UP, 400),
                 area(),
-                "bullet"
+                "bomb",
+                {
+                    update() {
+                        this.moveBy(0, -400 * dt());
+                        if (this.pos.y <= height() / 2) {
+                            createExplosion(this.pos);
+                            every("enemy", destroy);
+                            destroy(this);
+                            player.hasBomb = false;
+                        }
+                    }
+                }
             ]);
-            
-            add([
-                rect(6, 15),
-                pos(player.pos.x + 15, player.pos.y),
-                color(255, 255, 0),
-                move(UP, 400),
-                area(),
-                "bullet"
-            ]);
-            
-            add([
-                rect(6, 15),
-                pos(player.pos.x + 25, player.pos.y),
-                color(255, 255, 0),
-                move(UP, 400),
-                area(),
-                "bullet"
-            ]);
-            
-            // Center bullet
-            add([
-                rect(6, 15),
-                pos(player.pos.x + 22, player.pos.y),
-                color(255, 255, 0),
-                move(UP, 400),
-                area(),
-                "bullet"
-            ]);
-            
-            // Right side bullets
-            add([
-                rect(6, 15),
-                pos(player.pos.x + 35, player.pos.y),
-                color(255, 255, 0),
-                move(UP, 400),
-                area(),
-                "bullet"
-            ]);
-            
-            add([
-                rect(6, 15),
-                pos(player.pos.x + 45, player.pos.y),
-                color(255, 255, 0),
-                move(UP, 400),
-                area(),
-                "bullet"
-            ]);
-            
-            add([
-                rect(6, 15),
-                pos(player.pos.x + 55, player.pos.y),
-                color(255, 255, 0),
-                move(UP, 400),
-                area(),
-                "bullet"
-            ]);
+        } else if (player.spreadShot) {
+            // Spread shot bullets
+            const positions = [5, 15, 25, 22, 35, 45, 55];
+            positions.forEach(xOffset => {
+                add([
+                    rect(6, 15),
+                    pos(player.pos.x + xOffset, player.pos.y),
+                    color(255, 255, 0),
+                    move(UP, 400),
+                    area(),
+                    "bullet"
+                ]);
+            });
         } else {
-            // Normal single shot
+            // Normal shot
             add([
                 rect(6, 15),
                 pos(player.pos.x + 22, player.pos.y),
@@ -272,14 +270,13 @@ scene("game", () => {
         { width: 60, height: 60, color: [128, 0, 0], speed: 50, points: 30 }
     ];
 
-    // Enemy spawning with controlled speed
+    // Enemy spawning across full width
     function spawnEnemy() {
         if (gameOver) return;
         
         const typeIndex = Math.floor(rand(0, enemyTypes.length));
         const enemyType = enemyTypes[typeIndex];
         
-        // Cap speed increase
         const speedMultiplier = 1 + (difficulty * 0.1);
         
         add([
@@ -296,21 +293,18 @@ scene("game", () => {
     // Game update loop
     onUpdate(() => {
         if (!gameOver) {
-            // Update difficulty - no cap
             const newDifficulty = 1 + Math.floor(scoreText.value / 100);
             if (newDifficulty !== difficulty) {
                 difficulty = newDifficulty;
                 levelText.text = "Level: " + difficulty;
             }
 
-            // Spawn enemies at controlled rate
             spawnTime += dt();
             if (spawnTime >= Math.max(MIN_SPAWN_RATE, 1 / difficulty)) {
                 spawnEnemy();
                 spawnTime = 0;
             }
 
-            // Check for power-up spawn
             const timeSinceLastPowerUp = time() - lastPowerUpTime;
             if (timeSinceLastPowerUp > POWER_UP_COOLDOWN && rand(0, 1) < POWER_UP_CHANCE * dt()) {
                 spawnPowerUp();
@@ -337,12 +331,11 @@ scene("game", () => {
             lives++;
             livesText.text = "Lives: " + lives;
         } else {
-            // Reset all power-ups before applying new one
             player.isInvincible = false;
             player.autoShoot = false;
             player.spreadShot = false;
+            player.hasBomb = false;
             
-            // Apply the new power-up
             player.powerUpTime = type.duration;
             if (type.type === "shield") {
                 player.isInvincible = true;
@@ -351,6 +344,8 @@ scene("game", () => {
                 player.autoShoot = true;
             } else if (type.type === "spreadShot") {
                 player.spreadShot = true;
+            } else if (type.type === "bomb") {
+                player.hasBomb = true;
             }
         }
     });
