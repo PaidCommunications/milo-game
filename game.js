@@ -88,12 +88,40 @@ scene("game", () => {
             player.pos.x = clamp(player.pos.x, 0, width() - player.width);
             player.pos.y = clamp(player.pos.y, 0, height() - player.height);
         }
+    });
 
-        // Rapid fire shooting
-        if (player.rapidFire && !player.isInvisible && time() - lastShotTime > 0.1) {
-            shoot();
-            lastShotTime = time();
-        }
+    // Player movement controls
+    onKeyDown("left", () => {
+        if (!player.isInvisible) player.move(-PLAYER_SPEED, 0); // Move left
+    });
+
+    onKeyDown("right", () => {
+        if (!player.isInvisible) player.move(PLAYER_SPEED, 0); // Move right
+    });
+
+    onKeyDown("up", () => {
+        if (!player.isInvisible) player.move(0, -PLAYER_SPEED); // Move up
+    });
+
+    onKeyDown("down", () => {
+        if (!player.isInvisible) player.move(0, PLAYER_SPEED); // Move down
+    });
+
+    // WASD Controls
+    onKeyDown("a", () => {
+        if (!player.isInvisible) player.move(-PLAYER_SPEED, 0); // Move left (A)
+    });
+
+    onKeyDown("d", () => {
+        if (!player.isInvisible) player.move(PLAYER_SPEED, 0); // Move right (D)
+    });
+
+    onKeyDown("w", () => {
+        if (!player.isInvisible) player.move(0, -PLAYER_SPEED); // Move up (W)
+    });
+
+    onKeyDown("s", () => {
+        if (!player.isInvisible) player.move(0, PLAYER_SPEED); // Move down (S)
     });
 
     // Shooting logic
@@ -164,35 +192,6 @@ scene("game", () => {
         }
     });
 
-    // Spawn enemies
-    const enemyTypes = [
-        { sprite: "enemy1", width: 100, height: 100, speed: 100, points: 10 },
-        { sprite: "enemy2", width: 70, height: 70, speed: 150, points: 25 },
-        { sprite: "enemy3", width: 45, height: 45, speed: 200, points: 50 }
-    ];
-
-    function spawnEnemy() {
-        const enemy = choose(enemyTypes);
-        add([
-            sprite(enemy.sprite, { width: enemy.width, height: enemy.height }),
-            pos(rand(0, width() - enemy.width), 0),
-            move(DOWN, enemy.speed * difficulty),
-            area(),
-            "enemy",
-            { points: enemy.points }
-        ]);
-    }
-
-    // Display points on enemy death
-    function displayPoints(position, points) {
-        add([
-            text(`+${points}`, { size: 20, color: rgb(255, 255, 255) }),
-            pos(position),
-            lifespan(1),
-            move(UP, 50)
-        ]);
-    }
-
     // Update loop
     onUpdate(() => {
         if (!gameOver) {
@@ -209,7 +208,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1.2\n\n" +
+            "MiloInvasion V1\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot\n" +
