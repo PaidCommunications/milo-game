@@ -1,4 +1,4 @@
-// Kaboom initialization
+// Kaboom.js initialization
 kaboom({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -9,34 +9,33 @@ kaboom({
 });
 
 // Load assets
-loadSound("background", "assets/sounds/background.mp3");
-loadSound("shoot", "assets/sounds/shoot.wav");
-loadSound("collision", "assets/sounds/collision.wav");
-loadSound("explosion", "assets/sounds/explosion.wav");
-loadSprite("player", "assets/images/player.png");
-loadSprite("enemy", "assets/images/enemy.png");
-loadSprite("bullet", "assets/images/bullet.png");
-loadSprite("powerUp", "assets/images/powerUp.png");
+loadSprite("player", "assets/player.png");
+loadSprite("enemy1", "assets/enemy1.png");
+loadSprite("enemy2", "assets/enemy2.png");
+loadSprite("enemy3", "assets/enemy3.png");
+loadSound("background", "assets/background.mp3");
+loadSound("shoot", "assets/shoot.wav");
+loadSound("explosion", "assets/explosion.wav");
 
 // High scores
 const HIGH_SCORES_KEY = "highScores";
 let highScores = JSON.parse(localStorage.getItem(HIGH_SCORES_KEY)) || [];
 
+// Game scene
 scene("game", () => {
     let gameOver = false;
     let difficulty = 1;
     let lives = 3;
     let spawnTime = 0;
-    const MIN_SPAWN_RATE = 0.3;
     const PLAYER_SPEED = 400;
 
     // Background music
     play("background", { loop: true });
 
-    // Player
+    // Player setup
     const player = add([
         sprite("player"),
-        pos(width() / 2, height() / 2),
+        pos(width() / 2, height() - 100),
         area(),
         {
             powerUpTime: 0,
@@ -49,125 +48,56 @@ scene("game", () => {
         "player"
     ]);
 
-    // Movement
-    const movePlayer = (x, y) => {
-        if (!gameOver) {
-            player.move(x * PLAYER_SPEED * player.speedMultiplier, y * PLAYER_SPEED * player.speedMultiplier);
-        }
-    };
-    onKeyDown("left", () => movePlayer(-1, 0));
-    onKeyDown("right", () => movePlayer(1, 0));
-    onKeyDown("up", () => movePlayer(0, -1));
-    onKeyDown("down", () => movePlayer(0, 1));
+    // Movement controls
+    onKeyDown("left", () => player.move(-PLAYER_SPEED, 0));
+    onKeyDown("right", () => player.move(PLAYER_SPEED, 0));
+    onKeyDown("up", () => player.move(0, -PLAYER_SPEED));
+    onKeyDown("down", () => player.move(0, PLAYER_SPEED));
 
     // Shooting
     function shoot() {
         play("shoot");
-        if (player.hasBomb) {
-            add([
-                sprite("bullet"),
-                pos(player.pos.x, player.pos.y),
-                area(),
-                "bomb",
-                {
-                    update() {
-                        this.moveBy(0, -400 * dt());
-                        if (this.pos.y <= height() / 2) {
-                            createExplosion(this.pos);
-                            every("enemy", destroy);
-                            destroy(this);
-                            player.hasBomb = false;
-                        }
-                    }
-                }
-            ]);
-        } else if (player.spreadShot) {
-            [-15, 0, 15].forEach(offset => {
-                add([
-                    sprite("bullet"),
-                    pos(player.pos.x + offset, player.pos.y),
-                    move(UP, 400),
-                    area(),
-                    "bullet"
-                ]);
-            });
-        } else {
-            add([
-                sprite("bullet"),
-                pos(player.pos.x, player.pos.y),
-                move(UP, 400),
-                area(),
-                "bullet"
-            ]);
-        }
+        add([
+            rect(6, 15), // Default bullet
+            pos(player.pos.x + 22, player.pos.y),
+            move(UP, 400),
+            area(),
+            color(255, 255, 0),
+            "bullet"
+        ]);
     }
-    onKeyPress("space", () => {
-        if (!gameOver) {
-            shoot();
-        } else {
-            go("game");
-        }
-    });
+    onKeyPress("space", shoot);
 
-    // Enemy spawn
+    // Enemy spawning
     const enemyTypes = [
-        { width: 40, height: 40, speed: 100, points: 10 },
-        { width: 30, height: 30, speed: 200, points: 20 },
-        { width: 60, height: 60, speed: 50, points: 30 }
+        { sprite: "enemy1", speed: 100, points: 10 },
+        { sprite: "enemy2", speed: 150, points: 20 },
+        { sprite: "enemy3", speed: 75, points: 30 }
     ];
     function spawnEnemy() {
-        const type = choose(enemyTypes);
+        const enemy = choose(enemyTypes);
         add([
-            sprite("enemy"),
-            pos(rand(0, width() - type.width), 0),
-            move(DOWN, type.speed + difficulty * 10),
+            sprite(enemy.sprite),
+            pos(rand(0, width() - 40), 0),
+            move(DOWN, enemy.speed + difficulty * 10),
             area(),
             "enemy",
-            { points: type.points }
+            { points: enemy.points }
         ]);
     }
 
-    // Explosion
+    // Explosion effect
     function createExplosion(pos) {
         play("explosion");
-        add([
-            rect(width(), height()),
-            pos(0, 0),
-            color(255, 255, 255),
-            opacity(0.5),
-            lifespan(0.2)
-        ]);
         for (let i = 0; i < 32; i++) {
             add([
                 rect(8, 8),
-                pos(pos.x, pos.y),
-                color(255, 200, 0),
+                pos(pos),
                 move(rand(0, 360), rand(100, 200)),
-                lifespan(0.5)
+                lifespan(0.5),
+                color(255, 200, 0)
             ]);
         }
-    }
-
-    // Power-ups
-    const powerUpTypes = [
-        { type: "shield", duration: 5 },
-        { type: "autoShoot", duration: 8 },
-        { type: "spreadShot", duration: 6 },
-        { type: "extraLife", duration: 1 },
-        { type: "bomb", duration: 5 },
-        { type: "speedBoost", duration: 5 },
-        { type: "healthRegen", duration: 1 }
-    ];
-    function spawnPowerUp() {
-        const type = choose(powerUpTypes);
-        add([
-            sprite("powerUp"),
-            pos(rand(0, width() - 30), 0),
-            move(DOWN, 50),
-            area(),
-            "powerUp",
-            { powerUpType: type }
-        ]);
     }
 
     // Score and lives display
@@ -190,28 +120,6 @@ scene("game", () => {
         scoreText.text = "Score: " + score;
     });
 
-    onCollide("player", "powerUp", (p, powerUp) => {
-        const { type, duration } = powerUp.powerUpType;
-        destroy(powerUp);
-        if (type === "extraLife") {
-            lives++;
-            livesText.text = "Lives: " + lives;
-        } else if (type === "healthRegen") {
-            lives = Math.min(lives + 1, 3);
-            livesText.text = "Lives: " + lives;
-        } else if (type === "speedBoost") {
-            player.speedMultiplier = 2;
-            player.powerUpTime = duration;
-        } else {
-            player.isInvincible = type === "shield";
-            player.autoShoot = type === "autoShoot";
-            player.spreadShot = type === "spreadShot";
-            player.hasBomb = type === "bomb";
-            player.powerUpTime = duration;
-        }
-    });
-
-    // Game over
     onCollide("enemy", "player", (enemy, player) => {
         if (!player.isInvincible) {
             destroy(enemy);
@@ -219,15 +127,13 @@ scene("game", () => {
             livesText.text = "Lives: " + lives;
             if (lives <= 0) {
                 gameOver = true;
-                highScores.push(score);
-                highScores.sort((a, b) => b - a);
-                highScores = highScores.slice(0, 5);
-                localStorage.setItem(HIGH_SCORES_KEY, JSON.stringify(highScores));
-                go("gameOver", score);
+                add([text("Game Over!", { size: 32 }), pos(width() / 2 - 100, height() / 2)]);
+                add([text("Final Score: " + score, { size: 32 }), pos(width() / 2 - 100, height() / 2 + 50)]);
             }
         }
     });
 
+    // Enemy spawning loop
     onUpdate(() => {
         if (!gameOver) {
             spawnTime += dt();
@@ -239,16 +145,5 @@ scene("game", () => {
     });
 });
 
-scene("gameOver", (score) => {
-    add([
-        text("Game Over!\nYour Score: " + score, { size: 32 }),
-        pos(width() / 2 - 100, height() / 2 - 100)
-    ]);
-    highScores.forEach((s, i) => {
-        add([text(`${i + 1}: ${s}`, { size: 24 }), pos(20, 300 + i * 30)]);
-    });
-    onKeyPress("space", () => go("game"));
-});
-
-// Start game
+// Start the game
 go("game");
