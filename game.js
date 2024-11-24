@@ -314,7 +314,7 @@ scene("start", () => {
                 "- Spacebar to shoot (hold for rapid fire with power-up)\n" +
                 "Power-Ups:\n" +
                 "Green: Forcefield\n" +
-                "Light Purple: Rapid Fire (hold SPACE)\n" +
+                "Light Purple: Rapid Fire\n" +
                 "White: Extra Life\n" +
                 "Blue: Spread Shot\n" +
                 "Dark Purple: Bomb\n\n" +
