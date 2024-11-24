@@ -62,12 +62,13 @@ scene("game", () => {
         bomb: time(),
     };
 
+    // Different power-up spawn intervals
     const powerUpIntervals = {
-        forcefield: 30,
-        rapidFire: 20,
+        forcefield: 35,
+        rapidFire: 25,
         extraLife: 60,
-        spreadShot: 15,
-        bomb: 45,
+        spreadShot: 20,
+        bomb: 50,
     };
 
     // Background music
@@ -154,12 +155,12 @@ scene("game", () => {
     // Shooting logic
     function shoot() {
         if (player.isInvisible) return;
-        play("shoot");
         const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
 
         if (player.hasBomb) {
+            // Fire a single bomb
             add([
-                rect(15, 15),
+                rect(30, 30), // 5x the size of normal bullets
                 pos(bulletPos),
                 move(UP, 300),
                 color(128, 0, 128),
@@ -168,6 +169,7 @@ scene("game", () => {
                 {
                     update() {
                         if (this.pos.y < height() / 2) {
+                            // Destroy all enemies and create explosion
                             get("enemy").forEach((enemy) => {
                                 if ("pos" in enemy && enemy.pos) {
                                     displayPoints(enemy.pos, enemy.points || 0);
@@ -175,13 +177,16 @@ scene("game", () => {
                                 }
                             });
                             createExplosion(this.pos);
+                            play("explosion");
+                            flashBackground(); // Screen flashes white
                             destroy(this);
                         }
                     }
                 }
             ]);
-            player.hasBomb = false;
+            player.hasBomb = false; // Reset bomb after firing
         } else if (player.spreadShot) {
+            // Spread shot logic
             [-15, 0, 15].forEach(offset => {
                 add([
                     rect(6, 15),
@@ -193,6 +198,7 @@ scene("game", () => {
                 ]);
             });
         } else {
+            // Normal bullet
             add([
                 rect(6, 15),
                 pos(bulletPos),
@@ -204,40 +210,15 @@ scene("game", () => {
         }
     }
 
-    // Spacebar shooting
-    onKeyPress("space", () => {
-        if (!player.isInvisible) {
-            shoot();
-        }
-    });
-
-    // Spawn power-ups
-    function spawnPowerUps() {
-        const now = time();
-
-        for (const type in powerUpTimers) {
-            if (now - powerUpTimers[type] >= powerUpIntervals[type]) {
-                powerUpTimers[type] = now;
-
-                const colorMap = {
-                    forcefield: [0, 255, 0],
-                    rapidFire: [255, 100, 255],
-                    extraLife: [255, 255, 255],
-                    spreadShot: [0, 0, 255],
-                    bomb: [128, 0, 128]
-                };
-
-                add([
-                    rect(30, 30),
-                    pos(rand(0, width() - 30), 0),
-                    color(colorMap[type][0], colorMap[type][1], colorMap[type][2]),
-                    move(DOWN, 50),
-                    area(),
-                    "powerUp",
-                    { powerUpType: type }
-                ]);
-            }
-        }
+    // Flash screen background
+    function flashBackground() {
+        const overlay = add([
+            rect(width(), height()),
+            pos(0, 0),
+            color(255, 255, 255),
+            opacity(0.8), // Semi-transparent white flash
+            lifespan(1)
+        ]);
     }
 
     // Power-Up Collision Handling
@@ -272,6 +253,49 @@ scene("game", () => {
         }
     });
 
+    // Spawn power-ups
+    function spawnPowerUps() {
+        const now = time();
+
+        for (const type in powerUpTimers) {
+            if (now - powerUpTimers[type] >= powerUpIntervals[type]) {
+                powerUpTimers[type] = now;
+
+                const colorMap = {
+                    forcefield: [0, 255, 0],
+                    rapidFire: [255, 100, 255],
+                    extraLife: [255, 255, 255],
+                    spreadShot: [0, 0, 255],
+                    bomb: [128, 0, 128]
+                };
+
+                add([
+                    rect(30, 30),
+                    pos(rand(0, width() - 30), 0),
+                    color(colorMap[type][0], colorMap[type][1], colorMap[type][2]),
+                    move(DOWN, 50),
+                    area(),
+                    "powerUp",
+                    { powerUpType: type }
+                ]);
+            }
+        }
+    }
+
+    // Update loop
+    onUpdate(() => {
+        if (!gameOver) {
+            spawnTime += dt();
+
+            if (spawnTime > 1 / difficulty) {
+                spawnEnemy();
+                spawnTime = 0;
+            }
+
+            spawnPowerUps();
+        }
+    });
+
     // Spawn an enemy
     function spawnEnemy() {
         const enemy = choose(enemyTypes);
@@ -288,7 +312,6 @@ scene("game", () => {
 
     // Explosion effect
     function createExplosion(pos) {
-        play("explosion");
         for (let i = 0; i < 32; i++) {
             add([
                 rect(8, 8),
@@ -309,20 +332,6 @@ scene("game", () => {
             move(UP, 50)
         ]);
     }
-
-    // Update loop
-    onUpdate(() => {
-        if (!gameOver) {
-            spawnTime += dt();
-
-            if (spawnTime > 1 / difficulty) {
-                spawnEnemy();
-                spawnTime = 0;
-            }
-
-            spawnPowerUps();
-        }
-    });
 
     // Handle collision between bullets and enemies
     onCollide("bullet", "enemy", (bullet, enemy) => {
@@ -374,7 +383,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1\n\n" +
+            "MiloInvasion V2\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot\n" +
