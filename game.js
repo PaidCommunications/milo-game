@@ -152,9 +152,16 @@ scene("game", () => {
         if (!player.isInvisible) player.move(0, playerSpeed);
     });
 
+    // Shooting with space bar
+    onKeyPress("space", () => {
+        if (!player.isInvisible) {
+            shoot();
+        }
+    });
+
     // Shooting logic
     function shoot() {
-        if (player.isInvisible) return;
+        if (player.isInvisible) return; // Prevent shooting while invisible
         const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
 
         if (player.hasBomb) {
@@ -383,7 +390,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1\n\n" +
+            "MiloInvasion V2\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot\n" +
