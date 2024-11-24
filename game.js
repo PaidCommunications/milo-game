@@ -81,7 +81,10 @@ scene("game", () => {
                 {
                     update() {
                         if (this.pos.y < height() / 2) {
-                            every("enemy", destroy);
+                            every("enemy", (enemy) => {
+                                displayPoints(enemy.pos, enemy.points);
+                                destroy(enemy);
+                            });
                             createExplosion(this.pos);
                             destroy(this);
                             player.hasBomb = false;
@@ -105,6 +108,7 @@ scene("game", () => {
                 pos(player.pos.x, player.pos.y - 10),
                 move(UP, 400),
                 color(255, 255, 0),
+                area(),
                 "bullet"
             ]);
         }
@@ -144,36 +148,20 @@ scene("game", () => {
         }
     }
 
-    // Power-up spawning
-    const powerUps = [
-        { color: [0, 255, 0], type: "forcefield", interval: 30 },
-        { color: [255, 100, 255], type: "rapidFire", interval: 20 },
-        { color: [255, 255, 255], type: "extraLife", interval: 60 },
-        { color: [0, 0, 255], type: "spreadShot", interval: 15 },
-        { color: [128, 0, 128], type: "bomb", interval: 45 }
-    ];
-
-    function spawnPowerUp() {
-        const now = time();
-        powerUps.forEach(pu => {
-            if (now - lastPowerUpTime >= pu.interval) {
-                add([
-                    rect(30, 30),
-                    pos(rand(0, width() - 30), 0),
-                    color(pu.color),
-                    move(DOWN, 50),
-                    area(),
-                    "powerUp",
-                    { powerUpType: pu }
-                ]);
-            }
-        });
-        lastPowerUpTime = now;
+    // Display points on enemy death
+    function displayPoints(pos, points) {
+        add([
+            text(`+${points}`, { size: 20, color: rgb(255, 255, 255) }),
+            pos,
+            lifespan(1), // Display for 1 second
+            move(UP, 50) // Float upwards slightly
+        ]);
     }
 
     // Collisions
     onCollide("bullet", "enemy", (bullet, enemy) => {
         destroy(bullet);
+        displayPoints(enemy.pos, enemy.points);
         destroy(enemy);
         score += enemy.points;
         scoreText.text = "Score: " + score;
@@ -231,7 +219,6 @@ scene("game", () => {
                 spawnEnemy();
                 spawnTime = 0;
             }
-            spawnPowerUp();
         }
     });
 });
