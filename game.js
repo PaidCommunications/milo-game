@@ -1,4 +1,4 @@
-// Initialize kaboom with full screen
+// Kaboom initialization
 kaboom({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -8,208 +8,65 @@ kaboom({
     letterbox: true
 });
 
-// Add window resize handling
-window.addEventListener('resize', () => {
-    const canvas = document.querySelector('canvas');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-});
+// Load assets
+loadSound("background", "assets/sounds/background.mp3");
+loadSound("shoot", "assets/sounds/shoot.wav");
+loadSound("collision", "assets/sounds/collision.wav");
+loadSound("explosion", "assets/sounds/explosion.wav");
+loadSprite("player", "assets/images/player.png");
+loadSprite("enemy", "assets/images/enemy.png");
+loadSprite("bullet", "assets/images/bullet.png");
+loadSprite("powerUp", "assets/images/powerUp.png");
 
-// Game scene
+// High scores
+const HIGH_SCORES_KEY = "highScores";
+let highScores = JSON.parse(localStorage.getItem(HIGH_SCORES_KEY)) || [];
+
 scene("game", () => {
     let gameOver = false;
     let difficulty = 1;
     let lives = 3;
     let spawnTime = 0;
     const MIN_SPAWN_RATE = 0.3;
-    const PLAYER_SIZE = 50;
     const PLAYER_SPEED = 400;
 
-    // Player base - starting position
+    // Background music
+    play("background", { loop: true });
+
+    // Player
     const player = add([
-        rect(PLAYER_SIZE, PLAYER_SIZE),            
+        sprite("player"),
         pos(width() / 2, height() / 2),
-        color(0, 0, 255),        
         area(),
         {
             powerUpTime: 0,
+            speedMultiplier: 1,
             isInvincible: false,
             autoShoot: false,
             spreadShot: false,
             hasBomb: false
         },
-        "player"                 
+        "player"
     ]);
 
-    // Face elements
-    const eyes = add([
-        "eyes",
-        pos(0, 0),
-        {
-            draw() {
-                drawRect({
-                    width: 10,
-                    height: 10,
-                    pos: vec2(player.pos.x + 10, player.pos.y + 15),
-                    color: rgb(255, 255, 255),
-                });
-                drawRect({
-                    width: 10,
-                    height: 10,
-                    pos: vec2(player.pos.x + 32, player.pos.y + 15),
-                    color: rgb(255, 255, 255),
-                });
-            },
-        },
-    ]);
-
-    const mouth = add([
-        "mouth",
-        pos(0, 0),
-        {
-            draw() {
-                drawRect({
-                    width: 25,
-                    height: 6,
-                    pos: vec2(player.pos.x + 15, player.pos.y + 35),
-                    color: rgb(255, 255, 255),
-                });
-            },
-        },
-    ]);
-
-    // Arrow key movement
-    onKeyDown("left", () => {
+    // Movement
+    const movePlayer = (x, y) => {
         if (!gameOver) {
-            player.move(-PLAYER_SPEED, 0);    
+            player.move(x * PLAYER_SPEED * player.speedMultiplier, y * PLAYER_SPEED * player.speedMultiplier);
         }
-    });
+    };
+    onKeyDown("left", () => movePlayer(-1, 0));
+    onKeyDown("right", () => movePlayer(1, 0));
+    onKeyDown("up", () => movePlayer(0, -1));
+    onKeyDown("down", () => movePlayer(0, 1));
 
-    onKeyDown("right", () => {
-        if (!gameOver) {
-            player.move(PLAYER_SPEED, 0);    
-        }
-    });
-
-    onKeyDown("up", () => {
-        if (!gameOver) {
-            player.move(0, -PLAYER_SPEED);    
-        }
-    });
-
-    onKeyDown("down", () => {
-        if (!gameOver) {
-            player.move(0, PLAYER_SPEED);    
-        }
-    });
-
-    // WASD as alternate controls
-    onKeyDown("a", () => {
-        if (!gameOver) {
-            player.move(-PLAYER_SPEED, 0);    
-        }
-    });
-
-    onKeyDown("d", () => {
-        if (!gameOver) {
-            player.move(PLAYER_SPEED, 0);    
-        }
-    });
-
-    onKeyDown("w", () => {
-        if (!gameOver) {
-            player.move(0, -PLAYER_SPEED);    
-        }
-    });
-
-    onKeyDown("s", () => {
-        if (!gameOver) {
-            player.move(0, PLAYER_SPEED);    
-        }
-    });
-
-    // Keep player in bounds
-    player.onUpdate(() => {
-        // Screen boundaries
-        if (player.pos.x < 0) player.pos.x = 0;
-        if (player.pos.x > width() - PLAYER_SIZE) player.pos.x = width() - PLAYER_SIZE;
-        if (player.pos.y < 0) player.pos.y = 0;
-        if (player.pos.y > height() - PLAYER_SIZE) player.pos.y = height() - PLAYER_SIZE;
-
-        // Handle auto-shoot
-        if (player.autoShoot && !gameOver) {
-            shoot();
-        }
-
-        // Update power-up timer
-        if (player.powerUpTime > 0) {
-            player.powerUpTime -= dt();
-            
-            // Gold color when invincible
-            if (player.isInvincible) {
-                if (player.powerUpTime <= 2) {
-                    if (Math.floor(time() * 10) % 2 === 0) {
-                        player.use(color(255, 215, 0));
-                    } else {
-                        player.use(color(0, 0, 255));
-                    }
-                } else {
-                    player.use(color(255, 215, 0));
-                }
-            }
-            
-            if (player.powerUpTime <= 0) {
-                player.isInvincible = false;
-                player.autoShoot = false;
-                player.spreadShot = false;
-                player.hasBomb = false;
-                player.use(color(0, 0, 255));
-            }
-        }
-    });
-
-    // Create explosion effect
-    function createExplosion(p) {
-        // Screen flash
-        add([
-            rect(width(), height()),
-            pos(0, 0),
-            color(255, 255, 255),
-            opacity(0.5),
-            lifespan(0.2)
-        ]);
-
-        // Particle explosion
-        for (let i = 0; i < 32; i++) {
-            const angle = (2 * Math.PI * i) / 32;
-            const speed = rand(100, 200);
-            add([
-                rect(8, 8),
-                pos(p.x, p.y),
-                color(255, 200, 0),
-                move(angle, speed),
-                lifespan(0.5)
-            ]);
-        }
-    }
-
-    // Power-up types including bomb
-    const powerUpTypes = [
-        { color: [0, 255, 0], type: "shield", duration: 5 },      
-        { color: [255, 100, 255], type: "autoShoot", duration: 8 }, 
-        { color: [0, 255, 255], type: "spreadShot", duration: 6 },  
-        { color: [255, 255, 255], type: "extraLife", duration: 1 },
-        { color: [128, 0, 128], type: "bomb", duration: 5 }
-    ];
-
-    // Shooting function with bomb
+    // Shooting
     function shoot() {
+        play("shoot");
         if (player.hasBomb) {
-            // Bomb shot
             add([
-                rect(12, 30), // Large bullet
-                pos(player.pos.x + 19, player.pos.y),
-                color(255, 255, 0),
+                sprite("bullet"),
+                pos(player.pos.x, player.pos.y),
                 area(),
                 "bomb",
                 {
@@ -225,52 +82,87 @@ scene("game", () => {
                 }
             ]);
         } else if (player.spreadShot) {
-            // Spread shot bullets
-            const positions = [5, 15, 25, 22, 35, 45, 55];
-            positions.forEach(xOffset => {
+            [-15, 0, 15].forEach(offset => {
                 add([
-                    rect(6, 15),
-                    pos(player.pos.x + xOffset, player.pos.y),
-                    color(255, 255, 0),
+                    sprite("bullet"),
+                    pos(player.pos.x + offset, player.pos.y),
                     move(UP, 400),
                     area(),
                     "bullet"
                 ]);
             });
         } else {
-            // Normal shot
             add([
-                rect(6, 15),
-                pos(player.pos.x + 22, player.pos.y),
-                color(255, 255, 0),
+                sprite("bullet"),
+                pos(player.pos.x, player.pos.y),
                 move(UP, 400),
                 area(),
                 "bullet"
             ]);
         }
     }
-
-    // Manual shooting
     onKeyPress("space", () => {
-        if (gameOver) {
-            go("game");
-            return;
-        }
-        
-        if (!player.autoShoot) {
+        if (!gameOver) {
             shoot();
+        } else {
+            go("game");
         }
     });
 
-    // Spawn power-up
+    // Enemy spawn
+    const enemyTypes = [
+        { width: 40, height: 40, speed: 100, points: 10 },
+        { width: 30, height: 30, speed: 200, points: 20 },
+        { width: 60, height: 60, speed: 50, points: 30 }
+    ];
+    function spawnEnemy() {
+        const type = choose(enemyTypes);
+        add([
+            sprite("enemy"),
+            pos(rand(0, width() - type.width), 0),
+            move(DOWN, type.speed + difficulty * 10),
+            area(),
+            "enemy",
+            { points: type.points }
+        ]);
+    }
+
+    // Explosion
+    function createExplosion(pos) {
+        play("explosion");
+        add([
+            rect(width(), height()),
+            pos(0, 0),
+            color(255, 255, 255),
+            opacity(0.5),
+            lifespan(0.2)
+        ]);
+        for (let i = 0; i < 32; i++) {
+            add([
+                rect(8, 8),
+                pos(pos.x, pos.y),
+                color(255, 200, 0),
+                move(rand(0, 360), rand(100, 200)),
+                lifespan(0.5)
+            ]);
+        }
+    }
+
+    // Power-ups
+    const powerUpTypes = [
+        { type: "shield", duration: 5 },
+        { type: "autoShoot", duration: 8 },
+        { type: "spreadShot", duration: 6 },
+        { type: "extraLife", duration: 1 },
+        { type: "bomb", duration: 5 },
+        { type: "speedBoost", duration: 5 },
+        { type: "healthRegen", duration: 1 }
+    ];
     function spawnPowerUp() {
-        if (gameOver) return;
-        
         const type = choose(powerUpTypes);
         add([
-            rect(30, 30),
+            sprite("powerUp"),
             pos(rand(0, width() - 30), 0),
-            color(type.color[0], type.color[1], type.color[2]),
             move(DOWN, 50),
             area(),
             "powerUp",
@@ -278,150 +170,85 @@ scene("game", () => {
         ]);
     }
 
-    // Power-up timing
-    let lastPowerUpTime = 0;
-    const POWER_UP_COOLDOWN = 10;
-    const POWER_UP_CHANCE = 0.03;
-
-    // Score display
+    // Score and lives display
     let score = 0;
     const scoreText = add([
-        text("Score: 0", { size: 24 }),
+        text("Score: 0"),
         pos(20, 20),
         { value: 0 }
     ]);
-
     const livesText = add([
-        text("Lives: " + lives, { size: 24 }),
+        text("Lives: 3"),
         pos(20, 50)
     ]);
 
-    const levelText = add([
-        text("Level: 1", { size: 24 }),
-        pos(20, 80)
-    ]);
-
-    // Enemy types
-    const enemyTypes = [
-        { width: 40, height: 40, color: [255, 0, 0], speed: 100, points: 10 },
-        { width: 30, height: 30, color: [255, 165, 0], speed: 200, points: 20 },
-        { width: 60, height: 60, color: [128, 0, 0], speed: 50, points: 30 }
-    ];
-
-    // Enemy spawning
-    function spawnEnemy() {
-        if (gameOver) return;
-        
-        const typeIndex = Math.floor(rand(0, enemyTypes.length));
-        const enemyType = enemyTypes[typeIndex];
-        
-        const speedMultiplier = 1 + (difficulty * 0.1);
-        
-        add([
-            rect(enemyType.width, enemyType.height),
-            pos(rand(0, width() - enemyType.width), 0),
-            color(enemyType.color[0], enemyType.color[1], enemyType.color[2]),          
-            move(DOWN, enemyType.speed * speedMultiplier),           
-            area(),
-            "enemy",
-            { points: enemyType.points }
-        ]);
-    }
-
-    // Game update loop
-    onUpdate(() => {
-        if (!gameOver) {
-            const newDifficulty = 1 + Math.floor(scoreText.value / 100);
-            if (newDifficulty !== difficulty) {
-                difficulty = newDifficulty;
-                levelText.text = "Level: " + difficulty;
-            }
-
-            spawnTime += dt();
-            if (spawnTime >= Math.max(MIN_SPAWN_RATE, 1 / difficulty)) {
-                spawnEnemy();
-                spawnTime = 0;
-            }
-
-            const timeSinceLastPowerUp = time() - lastPowerUpTime;
-            if (timeSinceLastPowerUp > POWER_UP_COOLDOWN && rand(0, 1) < POWER_UP_CHANCE * dt()) {
-                spawnPowerUp();
-                lastPowerUpTime = time();
-            }
-        }
-    });
-
     // Collisions
     onCollide("bullet", "enemy", (bullet, enemy) => {
-        if (!gameOver) {
-            destroy(bullet);
-            destroy(enemy);
-            scoreText.value += enemy.points;
-            scoreText.text = "Score: " + scoreText.value;
-        }
+        destroy(bullet);
+        destroy(enemy);
+        score += enemy.points;
+        scoreText.text = "Score: " + score;
     });
 
     onCollide("player", "powerUp", (p, powerUp) => {
-        const type = powerUp.powerUpType;
+        const { type, duration } = powerUp.powerUpType;
         destroy(powerUp);
-
-        if (type.type === "extraLife") {
+        if (type === "extraLife") {
             lives++;
             livesText.text = "Lives: " + lives;
+        } else if (type === "healthRegen") {
+            lives = Math.min(lives + 1, 3);
+            livesText.text = "Lives: " + lives;
+        } else if (type === "speedBoost") {
+            player.speedMultiplier = 2;
+            player.powerUpTime = duration;
         } else {
-            player.isInvincible = false;
-            player.autoShoot = false;
-            player.spreadShot = false;
-            player.hasBomb = false;
-            
-            player.powerUpTime = type.duration;
-            if (type.type === "shield") {
-                player.isInvincible = true;
-                player.use(color(255, 215, 0));
-            } else if (type.type === "autoShoot") {
-                player.autoShoot = true;
-            } else if (type.type === "spreadShot") {
-                player.spreadShot = true;
-            } else if (type.type === "bomb") {
-                player.hasBomb = true;
+            player.isInvincible = type === "shield";
+            player.autoShoot = type === "autoShoot";
+            player.spreadShot = type === "spreadShot";
+            player.hasBomb = type === "bomb";
+            player.powerUpTime = duration;
+        }
+    });
+
+    // Game over
+    onCollide("enemy", "player", (enemy, player) => {
+        if (!player.isInvincible) {
+            destroy(enemy);
+            lives--;
+            livesText.text = "Lives: " + lives;
+            if (lives <= 0) {
+                gameOver = true;
+                highScores.push(score);
+                highScores.sort((a, b) => b - a);
+                highScores = highScores.slice(0, 5);
+                localStorage.setItem(HIGH_SCORES_KEY, JSON.stringify(highScores));
+                go("gameOver", score);
             }
         }
     });
 
-    onCollide("enemy", "player", (enemy, player) => {
-        if (!gameOver && !player.isInvincible) {
-            destroy(enemy);
-            lives--;
-            livesText.text = "Lives: " + lives;
-
-            if (lives <= 0) {
-                gameOver = true;
-                destroy(eyes);
-                destroy(mouth);
-                
-                add([
-                    text("Game Over!", { size: 32 }),
-                    pos(width()/2 - 100, height()/2 - 50)
-                ]);
-                
-                add([
-                    text("Final Score: " + scoreText.value, { size: 32 }),
-                    pos(width()/2 - 100, height()/2)
-                ]);
-
-                add([
-                    text("Level Reached: " + difficulty, { size: 32 }),
-                    pos(width()/2 - 100, height()/2 + 40)
-                ]);
-                
-                add([
-                    text("Press SPACE to restart", { size: 32 }),
-                    pos(width()/2 - 150, height()/2 + 90)
-                ]);
+    onUpdate(() => {
+        if (!gameOver) {
+            spawnTime += dt();
+            if (spawnTime > 1 / difficulty) {
+                spawnEnemy();
+                spawnTime = 0;
             }
         }
     });
 });
 
-// Start the game
+scene("gameOver", (score) => {
+    add([
+        text("Game Over!\nYour Score: " + score, { size: 32 }),
+        pos(width() / 2 - 100, height() / 2 - 100)
+    ]);
+    highScores.forEach((s, i) => {
+        add([text(`${i + 1}: ${s}`, { size: 24 }), pos(20, 300 + i * 30)]);
+    });
+    onKeyPress("space", () => go("game"));
+});
+
+// Start game
 go("game");
