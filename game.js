@@ -1,9 +1,18 @@
-// Initialize kaboom
+// Initialize kaboom with full screen
 kaboom({
-    width: 800,
-    height: 600,
+    width: window.innerWidth,
+    height: window.innerHeight,
     background: [0, 0, 30],
     canvas: document.querySelector("canvas"),
+    stretch: true,
+    letterbox: true
+});
+
+// Add window resize handling
+window.addEventListener('resize', () => {
+    const canvas = document.querySelector('canvas');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 });
 
 // Game scene
