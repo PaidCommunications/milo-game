@@ -27,9 +27,10 @@ scene("game", () => {
     let score = 0;
     let spawnTime = 0;
     let lastShotTime = 0;
-    let powerUpSpeed = 75; // Base power-up speed (50% faster)
+    let powerUpSpeed = 75; // Base power-up speed
     let playerSpeed = 400; // Base player speed
     let lives = 3;
+    let enemiesKilled = 0; // Track total enemies killed
 
     // Display score, lives, and level
     const scoreText = add([
@@ -109,7 +110,7 @@ scene("game", () => {
 
             if (player.powerUpTime <= 0) {
                 player.forcefield = false;
-                player.use(sprite("player", { width: 50, height: 50 }));
+                player.use(sprite("player", { width: 50, height: 50 })); // Reset to player sprite
             }
         }
 
@@ -183,6 +184,7 @@ scene("game", () => {
                     if (enemy && enemy.pos) { // Validate enemy
                         displayPoints(enemy.pos, enemy.points || 0);
                         destroy(enemy);
+                        enemiesKilled++; // Track killed enemies
                     }
                 });
 
@@ -267,7 +269,6 @@ scene("game", () => {
         }
     });
 
-    // Update loop
     onUpdate(() => {
         if (!gameOver) {
             spawnTime += dt();
@@ -279,22 +280,16 @@ scene("game", () => {
 
             spawnPowerUps();
 
-            // Update difficulty based on score
-            const newDifficulty = 1 + Math.floor(score / 1000); // Level up every 1000 points
+            const newDifficulty = 1 + Math.floor(score / 1000);
             if (newDifficulty !== difficulty) {
                 difficulty = newDifficulty;
-
-                // Update the level text
                 levelText.text = "Level: " + difficulty;
-
-                // Increase player speed and power-up speed with difficulty
-                playerSpeed = 400 * Math.pow(1.1, difficulty - 1); // Scale player speed
-                powerUpSpeed = 75 * Math.pow(1.1, difficulty - 1); // Scale power-up speed
+                playerSpeed = 400 * Math.pow(1.05, difficulty - 1);
+                powerUpSpeed = 75 * Math.pow(1.05, difficulty - 1);
             }
         }
     });
 
-    // Spawn power-ups with speed scaling
     function spawnPowerUps() {
         const now = time();
 
@@ -314,7 +309,7 @@ scene("game", () => {
                     rect(30, 30),
                     pos(rand(0, width() - 30), 0),
                     color(colorMap[type][0], colorMap[type][1], colorMap[type][2]),
-                    move(DOWN, powerUpSpeed * Math.pow(1.1, difficulty - 1)), // Increase speed per level
+                    move(DOWN, powerUpSpeed * Math.pow(1.05, difficulty - 1)),
                     area(),
                     "powerUp",
                     { powerUpType: type }
@@ -323,7 +318,6 @@ scene("game", () => {
         }
     }
 
-    // Spawn enemies with difficulty scaling
     function spawnEnemy() {
         const enemy = choose(enemyTypes);
 
@@ -337,20 +331,6 @@ scene("game", () => {
         ]);
     }
 
-    // Explosion effect
-    function createExplosion(pos) {
-        for (let i = 0; i < 32; i++) {
-            add([
-                rect(8, 8),
-                pos(pos),
-                move(rand(0, 360), rand(100, 200)),
-                lifespan(0.5),
-                color(255, 200, 0)
-            ]);
-        }
-    }
-
-    // Display points on enemy death
     function displayPoints(position, points) {
         add([
             text(`+${points}`, { size: 20, color: rgb(255, 255, 255) }),
@@ -360,21 +340,15 @@ scene("game", () => {
         ]);
     }
 
-    // Handle collision between bullets and enemies
     onCollide("bullet", "enemy", (bullet, enemy) => {
         destroy(bullet);
-
-        if ("pos" in enemy && enemy.points) {
-            displayPoints(enemy.pos, enemy.points);
-        }
-
+        displayPoints(enemy.pos, enemy.points);
         destroy(enemy);
-
         score += enemy.points || 0;
+        enemiesKilled++;
         scoreText.text = "Score: " + score;
     });
 
-    // Handle collision with enemies
     onCollide("player", "enemy", (player, enemy) => {
         if (player.forcefield) {
             displayPoints(enemy.pos, enemy.points);
@@ -396,17 +370,40 @@ scene("game", () => {
                 });
             } else {
                 gameOver = true;
+
+                let canRestart = false;
+                wait(5, () => { canRestart = true; });
+
                 add([
-                    text("Game Over! Press SPACE to restart.", { size: 32 }),
-                    pos(width() / 2 - 200, height() / 2)
+                    text("GAME OVER", { size: 48 }),
+                    pos(width() / 2 - 150, height() / 2 - 100)
                 ]);
-                onKeyPress("space", () => go("game"));
+
+                add([
+                    text("Level Reached: " + difficulty, { size: 32 }),
+                    pos(width() / 2 - 150, height() / 2 - 40)
+                ]);
+
+                add([
+                    text("Score: " + score, { size: 32 }),
+                    pos(width() / 2 - 150, height() / 2 + 20)
+                ]);
+
+                add([
+                    text("Enemies Killed: " + enemiesKilled, { size: 32 }),
+                    pos(width() / 2 - 150, height() / 2 + 80)
+                ]);
+
+                onKeyPress("space", () => {
+                    if (canRestart) {
+                        go("game");
+                    }
+                });
             }
         }
     });
 });
 
-// Start screen
 scene("start", () => {
     add([
         text(
@@ -429,5 +426,4 @@ scene("start", () => {
     onKeyPress("space", () => go("game"));
 });
 
-// Start the game
 go("start");
