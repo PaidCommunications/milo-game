@@ -410,7 +410,7 @@ function shoot() {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V2\n\n" +
+            "MiloInvasion V3\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot\n" +
