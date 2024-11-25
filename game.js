@@ -18,6 +18,7 @@ loadSprite("enemy3", "assets/enemy3.png");
 loadSound("background", "assets/background.mp3");
 loadSound("shoot", "assets/shoot.wav");
 loadSound("explosion", "assets/explosion.wav");
+loadSound("powerUp", "assets/Power Up.wav");
 
 // Game scene
 scene("game", () => {
@@ -238,6 +239,9 @@ scene("game", () => {
         // Destroy the power-up after collision
         destroy(powerUp);
 
+        // Play the power-up sound
+        play("powerUp");
+
         // Reset active power-ups
         player.forcefield = false;
         player.rapidFire = false;
@@ -274,6 +278,19 @@ scene("game", () => {
             }
 
             spawnPowerUps();
+
+            // Update difficulty based on score
+            const newDifficulty = 1 + Math.floor(score / 1000); // Level up every 1000 points
+            if (newDifficulty !== difficulty) {
+                difficulty = newDifficulty;
+
+                // Update the level text
+                levelText.text = "Level: " + difficulty;
+
+                // Increase player speed and power-up speed with difficulty
+                playerSpeed = 400 * Math.pow(1.1, difficulty - 1); // Scale player speed
+                powerUpSpeed = 75 * Math.pow(1.1, difficulty - 1); // Scale power-up speed
+            }
         }
     });
 
@@ -393,7 +410,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1\n\n" +
+            "MiloInvasion V2\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot\n" +
