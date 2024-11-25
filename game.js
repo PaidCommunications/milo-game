@@ -161,67 +161,67 @@ scene("game", () => {
         }
     });
 
-    // Shooting logic
-    function shoot() {
-        if (player.isInvisible) return; // Prevent shooting while invisible
-        const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
+   // Shooting logic
+function shoot() {
+    if (player.isInvisible) return; // Prevent shooting while invisible
+    const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
 
-        if (player.hasBomb) {
-            // Fire a single bomb
-            const bomb = add([
-                rect(30, 30), // Bomb size
-                pos(bulletPos),
-                move(UP, 300),
-                color(128, 0, 128),
-                area(),
-                "bomb"
-            ]);
+    // Play the shooting sound
+    play("shoot", {
+        volume: 0.5, // Adjust volume if necessary
+        speed: 1.0   // Normal playback speed
+    });
 
-            // Bomb collision with enemy
-            bomb.onCollide("enemy", (enemy) => {
-                // Destroy all current enemies
-                get("enemy").forEach((enemy) => {
-                    if (enemy && enemy.pos) { // Validate enemy
-                        displayPoints(enemy.pos, enemy.points || 0);
-                        destroy(enemy);
-                        enemiesKilled++; // Track killed enemies
-                    }
-                });
+    if (player.hasBomb) {
+        // Fire a single bomb
+        const bomb = add([
+            rect(30, 30), // Bomb size
+            pos(bulletPos),
+            move(UP, 300),
+            color(128, 0, 128),
+            area(),
+            "bomb"
+        ]);
 
-                // Play explosion sound and flash background
-                play("explosion");
-                flashBackground();
-
-                // Destroy the bomb itself
-                destroy(bomb);
-
-                // Reset the bomb power-up
-                player.hasBomb = false;
+        // Bomb collision with enemy
+        bomb.onCollide("enemy", (enemy) => {
+            get("enemy").forEach((enemy) => {
+                if (enemy && enemy.pos) { // Validate enemy
+                    displayPoints(enemy.pos, enemy.points || 0);
+                    destroy(enemy);
+                    enemiesKilled++;
+                }
             });
-        } else if (player.spreadShot) {
-            // Spread shot logic
-            [-15, 0, 15].forEach(offset => {
-                add([
-                    rect(6, 15),
-                    pos(bulletPos.x + offset, bulletPos.y),
-                    move(UP, 300),
-                    color(255, 255, 255),
-                    area(),
-                    "bullet"
-                ]);
-            });
-        } else {
-            // Normal bullet
+
+            play("explosion");
+            flashBackground();
+            destroy(bomb);
+            player.hasBomb = false;
+        });
+    } else if (player.spreadShot) {
+        // Spread shot logic
+        [-15, 0, 15].forEach(offset => {
             add([
                 rect(6, 15),
-                pos(bulletPos),
-                move(UP, 400),
-                color(255, 255, 0),
+                pos(bulletPos.x + offset, bulletPos.y),
+                move(UP, 300),
+                color(255, 255, 255),
                 area(),
                 "bullet"
             ]);
-        }
+        });
+    } else {
+        // Normal bullet
+        add([
+            rect(6, 15),
+            pos(bulletPos),
+            move(UP, 400),
+            color(255, 255, 0),
+            area(),
+            "bullet"
+        ]);
     }
+}
 
     // Flash screen background
     function flashBackground() {
