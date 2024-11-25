@@ -166,32 +166,35 @@ scene("game", () => {
 
         if (player.hasBomb) {
             // Fire a single bomb
-            add([
-                rect(30, 30), // 5x the size of normal bullets
+            const bomb = add([
+                rect(30, 30), // Bomb size
                 pos(bulletPos),
                 move(UP, 300),
                 color(128, 0, 128),
                 area(),
-                "bomb",
-                {
-                    update() {
-                        if (this.pos.y < height() / 2) {
-                            // Destroy all enemies and create explosion
-                            get("enemy").forEach((enemy) => {
-                                if ("pos" in enemy && enemy.pos) {
-                                    displayPoints(enemy.pos, enemy.points || 0);
-                                    destroy(enemy);
-                                }
-                            });
-                            createExplosion(this.pos);
-                            play("explosion");
-                            flashBackground(); // Screen flashes white
-                            destroy(this);
-                        }
-                    }
-                }
+                "bomb"
             ]);
-            player.hasBomb = false; // Reset bomb after firing
+
+            // Bomb collision with enemy
+            bomb.onCollide("enemy", (enemy) => {
+                // Destroy all current enemies
+                get("enemy").forEach((enemy) => {
+                    if (enemy && enemy.pos) { // Validate enemy
+                        displayPoints(enemy.pos, enemy.points || 0);
+                        destroy(enemy);
+                    }
+                });
+
+                // Play explosion sound and flash background
+                play("explosion");
+                flashBackground();
+
+                // Destroy the bomb itself
+                destroy(bomb);
+
+                // Reset the bomb power-up
+                player.hasBomb = false;
+            });
         } else if (player.spreadShot) {
             // Spread shot logic
             [-15, 0, 15].forEach(offset => {
@@ -219,7 +222,7 @@ scene("game", () => {
 
     // Flash screen background
     function flashBackground() {
-        const overlay = add([
+        add([
             rect(width(), height()),
             pos(0, 0),
             color(255, 255, 255),
@@ -390,7 +393,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V2\n\n" +
+            "MiloInvasion V1\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot\n" +
