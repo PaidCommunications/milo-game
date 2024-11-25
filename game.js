@@ -244,13 +244,16 @@ scene("game", () => {
         // Play the power-up sound
         play("powerUp");
 
-        // Reset active power-ups
+        // Reset all active power-ups
         player.forcefield = false;
         player.rapidFire = false;
         player.spreadShot = false;
         player.hasBomb = false;
 
-        // Apply power-up effects
+        // Revert to normal player sprite if invincible
+        player.use(sprite("player", { width: 50, height: 50 }));
+
+        // Apply the new power-up effect
         if (type === "forcefield") {
             player.forcefield = true;
             player.powerUpTime = 10;
@@ -407,7 +410,7 @@ scene("game", () => {
 scene("start", () => {
     add([
         text(
-            "MiloInvasion V1\n\n" +
+            "MiloInvasion V2\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot\n" +
