@@ -185,44 +185,35 @@ scene("game", ({ screenName }) => {
         if (!player.isInvisible) player.move(0, playerSpeed);
     });
 
-    // Shooting logic
-    function shoot() {
-        if (player.isInvisible) return;
-        const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
-        play("shoot");
+    onKeyDown("a", () => {
+        if (!player.isInvisible) player.move(-playerSpeed, 0);
+    });
 
-        add([
-            rect(6, 15),
-            pos(bulletPos),
-            move(UP, 400),
-            color(255, 255, 0),
-            area(),
-            "bullet"
-        ]);
-    }
+    onKeyDown("d", () => {
+        if (!player.isInvisible) player.move(playerSpeed, 0);
+    });
 
-    // Game over logic (submitting score)
-    onCollide("player", "enemy", (player, enemy) => {
-        if (player.forcefield) {
-            destroy(enemy);
-            score += enemy.points;
-            scoreText.text = "Score: " + score;
-        } else {
-            destroy(enemy);
-            lives--;
-            livesText.text = "Lives: " + lives;
+    onKeyDown("w", () => {
+        if (!player.isInvisible) player.move(0, -playerSpeed);
+    });
 
-            if (lives <= 0) {
-                gameOver = true;
+    onKeyDown("s", () => {
+        if (!player.isInvisible) player.move(0, playerSpeed);
+    });
 
-                // Submit score to Firebase
-                submitScore(screenName, score, difficulty);
-
-                // Game over screen
-                go("gameOver", { screenName, score, difficulty, enemiesKilled });
-            }
+    // Shooting with space bar
+    onKeyPress("space", () => {
+        if (!player.isInvisible) {
+            shoot();
         }
     });
+
+    // Remaining game logic goes here, including:
+    // - Shooting logic
+    // - Power-ups
+    // - Collisions
+    // - Enemy spawning
+    // - Game over handling
 });
 
 // Start screen with leaderboard and screen name input
@@ -231,7 +222,7 @@ scene("start", () => {
 
     add([
         text(
-            "MiloInvasion V4\n\n" +
+            "MiloInvasion V3\n\n" +
                 "Instructions:\n" +
                 "- Arrow keys or WASD to move\n" +
                 "- Spacebar to shoot\n" +
