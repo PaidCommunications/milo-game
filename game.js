@@ -8,6 +8,53 @@ kaboom({
     letterbox: true
 });
 
+// Import Firebase functions
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, push, get, query, orderByChild, limitToLast } from "firebase/database";
+
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyDOxG55SjBKMYpEIslXlb6ASYHo",
+    authDomain: "miloinvasion-database.firebaseapp.com",
+    projectId: "miloinvasion-database",
+    storageBucket: "miloinvasion-database.firebaseapp.com",
+    messagingSenderId: "802510030136",
+    appId: "1:802510030136:web:ec8b2d86707d7a90b32dcd"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Submit high score to the database
+function submitScore(screenName, score, level) {
+    const scoresRef = ref(db, "highscores/");
+    push(scoresRef, {
+        screenName,
+        score,
+        level,
+        timestamp: Date.now()
+    }).catch((error) => console.error("Error submitting score:", error));
+}
+
+// Retrieve high scores
+function getHighScores(callback) {
+    const scoresRef = query(ref(db, "highscores/"), orderByChild("score"), limitToLast(10));
+    get(scoresRef)
+        .then((snapshot) => {
+            if (snapshot.exists()) {
+                const scores = [];
+                snapshot.forEach((childSnapshot) => {
+                    scores.push(childSnapshot.val());
+                });
+                callback(scores.reverse());
+            } else {
+                callback([]);
+            }
+        })
+        .catch((error) => console.error("Error retrieving scores:", error));
+}
+
 // Load assets
 loadSprite("player", "assets/player.png");
 loadSprite("forcefield", "assets/forcefield.png");
@@ -21,7 +68,7 @@ loadSound("explosion", "assets/explosion.wav");
 loadSound("powerUp", "assets/Power Up.wav");
 
 // Game scene
-scene("game", () => {
+scene("game", ({ screenName }) => {
     let gameOver = false;
     let difficulty = 1;
     let score = 0;
@@ -138,80 +185,12 @@ scene("game", () => {
         if (!player.isInvisible) player.move(0, playerSpeed);
     });
 
-    onKeyDown("a", () => {
-        if (!player.isInvisible) player.move(-playerSpeed, 0);
-    });
+    // Shooting logic
+    function shoot() {
+        if (player.isInvisible) return;
+        const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
+        play("shoot");
 
-    onKeyDown("d", () => {
-        if (!player.isInvisible) player.move(playerSpeed, 0);
-    });
-
-    onKeyDown("w", () => {
-        if (!player.isInvisible) player.move(0, -playerSpeed);
-    });
-
-    onKeyDown("s", () => {
-        if (!player.isInvisible) player.move(0, playerSpeed);
-    });
-
-    // Shooting with space bar
-    onKeyPress("space", () => {
-        if (!player.isInvisible) {
-            shoot();
-        }
-    });
-
-   // Shooting logic
-function shoot() {
-    if (player.isInvisible) return; // Prevent shooting while invisible
-    const bulletPos = vec2(player.pos.x + player.width / 2 - 3, player.pos.y);
-
-    // Play the shooting sound
-    play("shoot", {
-        volume: 0.5, // Adjust volume if necessary
-        speed: 1.0   // Normal playback speed
-    });
-
-    if (player.hasBomb) {
-        // Fire a single bomb
-        const bomb = add([
-            rect(30, 30), // Bomb size
-            pos(bulletPos),
-            move(UP, 300),
-            color(128, 0, 128),
-            area(),
-            "bomb"
-        ]);
-
-        // Bomb collision with enemy
-        bomb.onCollide("enemy", (enemy) => {
-            get("enemy").forEach((enemy) => {
-                if (enemy && enemy.pos) { // Validate enemy
-                    displayPoints(enemy.pos, enemy.points || 0);
-                    destroy(enemy);
-                    enemiesKilled++;
-                }
-            });
-
-            play("explosion");
-            flashBackground();
-            destroy(bomb);
-            player.hasBomb = false;
-        });
-    } else if (player.spreadShot) {
-        // Spread shot logic
-        [-15, 0, 15].forEach(offset => {
-            add([
-                rect(6, 15),
-                pos(bulletPos.x + offset, bulletPos.y),
-                move(UP, 300),
-                color(255, 255, 255),
-                area(),
-                "bullet"
-            ]);
-        });
-    } else {
-        // Normal bullet
         add([
             rect(6, 15),
             pos(bulletPos),
@@ -221,193 +200,35 @@ function shoot() {
             "bullet"
         ]);
     }
-}
 
-    // Flash screen background
-    function flashBackground() {
-        add([
-            rect(width(), height()),
-            pos(0, 0),
-            color(255, 255, 255),
-            opacity(0.8), // Semi-transparent white flash
-            lifespan(1)
-        ]);
-    }
-
-    // Power-Up Collision Handling
-    onCollide("player", "powerUp", (player, powerUp) => {
-        const type = powerUp.powerUpType;
-
-        // Destroy the power-up after collision
-        destroy(powerUp);
-
-        // Play the power-up sound
-        play("powerUp");
-
-        // Reset all active power-ups
-        player.forcefield = false;
-        player.rapidFire = false;
-        player.spreadShot = false;
-        player.hasBomb = false;
-
-        // Revert to normal player sprite if invincible
-        player.use(sprite("player", { width: 50, height: 50 }));
-
-        // Apply the new power-up effect
-        if (type === "forcefield") {
-            player.forcefield = true;
-            player.powerUpTime = 10;
-            player.use(sprite("forcefield", { width: 50, height: 50 }));
-        } else if (type === "rapidFire") {
-            player.rapidFire = true;
-            wait(10, () => (player.rapidFire = false));
-        } else if (type === "extraLife") {
-            lives++;
-            livesText.text = "Lives: " + lives;
-        } else if (type === "spreadShot") {
-            player.spreadShot = true;
-            wait(10, () => (player.spreadShot = false));
-        } else if (type === "bomb") {
-            player.hasBomb = true;
-        }
-    });
-
-    onUpdate(() => {
-        if (!gameOver) {
-            spawnTime += dt();
-
-            if (spawnTime > 1 / difficulty) {
-                spawnEnemy();
-                spawnTime = 0;
-            }
-
-            spawnPowerUps();
-
-            const newDifficulty = 1 + Math.floor(score / 1000);
-            if (newDifficulty !== difficulty) {
-                difficulty = newDifficulty;
-                levelText.text = "Level: " + difficulty;
-                playerSpeed = 400 * Math.pow(1.05, difficulty - 1);
-                powerUpSpeed = 75 * Math.pow(1.05, difficulty - 1);
-            }
-        }
-    });
-
-    function spawnPowerUps() {
-        const now = time();
-
-        for (const type in powerUpTimers) {
-            if (now - powerUpTimers[type] >= powerUpIntervals[type]) {
-                powerUpTimers[type] = now;
-
-                const colorMap = {
-                    forcefield: [0, 255, 0],
-                    rapidFire: [255, 100, 255],
-                    extraLife: [255, 255, 255],
-                    spreadShot: [0, 0, 255],
-                    bomb: [128, 0, 128]
-                };
-
-                add([
-                    rect(30, 30),
-                    pos(rand(0, width() - 30), 0),
-                    color(colorMap[type][0], colorMap[type][1], colorMap[type][2]),
-                    move(DOWN, powerUpSpeed * Math.pow(1.05, difficulty - 1)),
-                    area(),
-                    "powerUp",
-                    { powerUpType: type }
-                ]);
-            }
-        }
-    }
-
-    function spawnEnemy() {
-        const enemy = choose(enemyTypes);
-
-        add([
-            sprite(enemy.sprite, { width: enemy.width, height: enemy.height }),
-            pos(rand(0, width() - enemy.width), 0),
-            move(DOWN, enemy.speed * difficulty),
-            area(),
-            "enemy",
-            { points: enemy.points }
-        ]);
-    }
-
-    function displayPoints(position, points) {
-        add([
-            text(`+${points}`, { size: 20, color: rgb(255, 255, 255) }),
-            pos(position),
-            lifespan(1),
-            move(UP, 50)
-        ]);
-    }
-
-    onCollide("bullet", "enemy", (bullet, enemy) => {
-        destroy(bullet);
-        displayPoints(enemy.pos, enemy.points);
-        destroy(enemy);
-        score += enemy.points || 0;
-        enemiesKilled++;
-        scoreText.text = "Score: " + score;
-    });
-
+    // Game over logic (submitting score)
     onCollide("player", "enemy", (player, enemy) => {
         if (player.forcefield) {
-            displayPoints(enemy.pos, enemy.points);
             destroy(enemy);
             score += enemy.points;
             scoreText.text = "Score: " + score;
         } else {
-            play("explosion");
             destroy(enemy);
             lives--;
             livesText.text = "Lives: " + lives;
 
-            if (lives > 0) {
-                player.isInvisible = true;
-                player.hidden = true;
-                wait(1, () => {
-                    player.isInvisible = false;
-                    player.hidden = false;
-                });
-            } else {
+            if (lives <= 0) {
                 gameOver = true;
 
-                let canRestart = false;
-                wait(5, () => { canRestart = true; });
+                // Submit score to Firebase
+                submitScore(screenName, score, difficulty);
 
-                add([
-                    text("GAME OVER", { size: 48 }),
-                    pos(width() / 2 - 150, height() / 2 - 100)
-                ]);
-
-                add([
-                    text("Level Reached: " + difficulty, { size: 32 }),
-                    pos(width() / 2 - 150, height() / 2 - 40)
-                ]);
-
-                add([
-                    text("Score: " + score, { size: 32 }),
-                    pos(width() / 2 - 150, height() / 2 + 20)
-                ]);
-
-                add([
-                    text("Enemies Killed: " + enemiesKilled, { size: 32 }),
-                    pos(width() / 2 - 150, height() / 2 + 80)
-                ]);
-
-                onKeyPress("space", () => {
-                    if (canRestart) {
-                        go("game");
-                    }
-                });
+                // Game over screen
+                go("gameOver", { screenName, score, difficulty, enemiesKilled });
             }
         }
     });
 });
 
+// Start screen with leaderboard and screen name input
 scene("start", () => {
+    let screenName = "";
+
     add([
         text(
             "MiloInvasion V3\n\n" +
@@ -420,13 +241,45 @@ scene("start", () => {
                 "White: Extra Life\n" +
                 "Blue: Spread Shot\n" +
                 "Dark Purple: Bomb\n\n" +
-                "Press SPACE to Start!",
+                "Enter your screen name below:\n",
             { size: 24 }
         ),
-        pos(50, 100)
+        pos(50, 50)
     ]);
 
-    onKeyPress("space", () => go("game"));
+    const inputBox = add([
+        rect(300, 50),
+        pos(50, 400),
+        outline(2),
+        area()
+    ]);
+
+    const inputText = add([
+        text("", { size: 24 }),
+        pos(55, 410),
+        { screenName: "" }
+    ]);
+
+    onKeyPress((key) => {
+        if (key === "enter" && screenName.trim() !== "") {
+            go("game", { screenName });
+        } else if (key === "backspace") {
+            screenName = screenName.slice(0, -1);
+        } else if (key.length === 1) {
+            screenName += key;
+        }
+        inputText.text = screenName;
+    });
+
+    getHighScores((scores) => {
+        const leaderboardText = scores
+            .map((s, i) => `${i + 1}. ${s.screenName}: ${s.score} (Level ${s.level})`)
+            .join("\n");
+        add([
+            text("Leaderboard:\n" + leaderboardText, { size: 18 }),
+            pos(50, 500)
+        ]);
+    });
 });
 
 go("start");
